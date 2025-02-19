@@ -26,6 +26,7 @@ export class Stage {
   protected startTime = 0;
   protected lastFrameTime = 0;
 
+  onPrepareFrame?: Listener<FrameEventData>;
   onBeforeRender?: Listener<FrameEventData>;
   onKeyDown?: Listener<KeyEventData>;
 
@@ -51,6 +52,7 @@ export class Stage {
     const frameDelta = now - this.lastFrameTime;
     const timeSinceStart = now - this.startTime;
     const frameEvent: FrameEventData = {frameDelta, timeSinceStart};
+    this.onPrepareFrame?.(frameEvent);
     for (const sprite of this.sprites) {
       sprite.onBeforeRender?.(frameEvent);
     }

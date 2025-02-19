@@ -24,8 +24,8 @@ const TREE_DENSITY = 20000;
 
 class SkiDear extends Stage {
   skiier!: Skiier;
-  trees: Obstacle[] = [];
-  private targetTreeCount = 0;
+  obstacles: Obstacle[] = [];
+  private targetObstacleCount = 0;
 
   async init(): Promise<void> {
     this.setBackground('#ffffff');
@@ -36,21 +36,33 @@ class SkiDear extends Stage {
 
     this.setViewport(0, this.skiier.y + this.height * 0.2);
 
-    const numTrees =
-      this.targetTreeCount =
+    const numObsts =
+      this.targetObstacleCount =
       Math.round((this.width * this.height) / TREE_DENSITY);
 
     const top = this.getViewportEdge('top');
     const right = this.getViewportEdge('right');
     const bottom = this.getViewportEdge('bottom');
     const left = this.getViewportEdge('left');
-    for (let i = 0; i <= Math.floor(numTrees / 2); ++i) {
-      const tree = new Obstacle();
-      tree.setPos(randomInt(left, right), randomInt(top, bottom + 4 * this.height));
-      this.addSprite(tree);
-      insertSortedBy(this.trees, tree, getY);
+    for (let i = 0; i <= Math.floor(numObsts / 2); ++i) {
+      const obst = new Obstacle();
+      // obst.setPos(randomInt(left, right), randomInt(top, bottom + 4 * this.height));
+      obst.setPos(randomInt(left, right), randomInt(top, bottom));
+      this.addSprite(obst);
+      insertSortedBy(this.obstacles, obst, getY);
     }
   }
+
+  onPrepareFrame = () => {
+    // Check for collisions. This is just O(N) for now, but could be improved
+    // since obstacles is sorted by Y position
+    const {skiier} = this;
+    for (const obst of this.obstacles) {
+      if (skiier.intersectsWith(obst)) {
+        skiier.onCollision(obst);
+      }
+    }
+  };
 
   onBeforeRender = () => {
     this.adjustViewport();
@@ -68,24 +80,24 @@ class SkiDear extends Stage {
 
   private addObstacles() {
     let popped: Obstacle[] | undefined;
-    while (this.trees.length && this.distanceOutsideViewportEdge('top', this.trees[0].y) > 50) {
-      const tree = this.trees.shift()!;
+    while (this.obstacles.length && this.distanceOutsideViewportEdge('top', this.obstacles[0].y) > 50) {
+      const tree = this.obstacles.shift()!;
       popped ??= [];
       popped.push(tree);
       this.removeSprite(tree);
     }
-    if (this.trees.length < this.targetTreeCount) {
+    if (this.obstacles.length < this.targetObstacleCount) {
       const bottom = this.getViewportEdge('bottom');
       const left = this.getViewportEdge('left');
       const { width, height } = this;
       const buffer = 0.2;
-      while (this.trees.length < this.targetTreeCount) {
+      while (this.obstacles.length < this.targetObstacleCount) {
         const tree = popped?.pop() ?? new Obstacle();
         tree.setPos(
           randomInt(left - width * buffer, left + width * (1 + buffer)),
           randomInt(bottom + 50, bottom + height),
         );
-        insertSortedBy(this.trees, tree, getY);
+        insertSortedBy(this.obstacles, tree, getY);
         this.addSprite(tree);
       }
     }

@@ -1,4 +1,4 @@
-export type HasY = {y: number};
+export type HasY = { y: number };
 
 export function randomInt(lowInclusive: number, highExclusive: number): number {
   return Math.floor(Math.random() * (highExclusive - lowInclusive)) + lowInclusive;
@@ -42,4 +42,12 @@ export function easeTo(current: number, target: number, strength: number, epsilo
   const diff = target - current;
   if (Math.abs(diff) < epsilon) return target;
   return current + diff * strength;
+}
+
+export type AABB = [x1: number, y1: number, x2: number, y2: number];
+
+export function intersects(
+  [aLeft, aTop, aRight, aBottom]: AABB,
+  [bLeft, bTop, bRight, bBottom]: AABB): boolean {
+  return aRight > bLeft && aLeft < bRight && aBottom > bTop && aTop < bBottom;
 }

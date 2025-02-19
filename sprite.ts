@@ -1,5 +1,5 @@
 import { Listener, KeyEventData, FrameEventData } from './events.js';
-import { nthItem, randomInt } from './lib.js';
+import { AABB, intersects, nthItem, randomInt } from './lib.js';
 import { translate } from './canvas_lib.js';
 import { sortByY } from './array_lib.js';
 
@@ -8,10 +8,13 @@ export abstract class Sprite {
   y = 0;
   rotation = 0; // radians
   scale = 1;
-  width = 0;
-  height = 0;
+  width = 2;
+  height = 2;
   private children: Sprite[] | undefined;
   debug = false;
+
+  private localHitbox: AABB | undefined;
+  private globalHitboxCache: AABB | undefined;
 
   onKeyDown: Listener<KeyEventData> | undefined;
   onBeforeRender: Listener<FrameEventData> | undefined;
@@ -19,9 +22,25 @@ export abstract class Sprite {
   setPos(x: number, y: number): void {
     this.x = x;
     this.y = y;
+    this.globalHitboxCache = undefined;
   }
 
-  addChild(child: Sprite) {
+  getHitbox(): AABB {
+    const local = this.localHitbox;
+    return this.globalHitboxCache ??= [
+      this.x + (local?.[0] ?? -this.width / 2),
+      this.y + (local?.[1] ?? -this.height / 2),
+      this.x + (local?.[2] ?? this.width / 2),
+      this.y + (local?.[3] ?? this.height / 2),
+    ];
+  }
+
+  setHitbox(hitbox: AABB | undefined): void {
+    this.localHitbox = hitbox;
+    this.globalHitboxCache = undefined;
+  }
+
+  addChild(child: Sprite): void {
     (this.children ??= []).push(child);
   }
 
@@ -29,15 +48,22 @@ export abstract class Sprite {
     this.scale = scale;
   }
 
-  // natural size
+  // natural size of the visuals
   setSize(w: number, h: number): void {
     this.width = w;
     this.height = h;
+    this.globalHitboxCache = undefined;
+  }
+
+  intersectsWith(other: Sprite): boolean {
+    return intersects(this.getHitbox(), other.getHitbox());
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
+    const x = Math.round(this.x);
+    const y = Math.round(this.y);
     ctx.save();
-    ctx.translate(Math.round(this.x), Math.round(this.y));
+    ctx.translate(x, y);
     ctx.scale(this.scale, this.scale);
     ctx.rotate(this.rotation);
     let childIndex = 0;
@@ -56,7 +82,14 @@ export abstract class Sprite {
       }
     }
     if (this.debug) {
+      ctx.save();
+      ctx.fillStyle = '#f0f';
+      ctx.strokeStyle = '#f0f';
+      ctx.lineWidth = 1;
       ctx.fillText(this.debugText(), this.width / 2, this.height / 2);
+      const [l, t, r, b] = this.getHitbox();
+      ctx.strokeRect(l - x + 0.5, t - y + 0.5, r - l, b - t);
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -70,11 +103,9 @@ export abstract class Sprite {
   protected abstract drawInner(context: CanvasRenderingContext2D): void;
 }
 
-export type AABB = [x1: number, y1: number, x2: number, y2: number];
-
 export type ImageSource = HTMLImageElement | HTMLCanvasElement | ImageBitmap | OffscreenCanvas;
 
-export type FramesMap = Map<string, AABB>;
+export type FramesMap = Map<string, [frameDimensions: AABB, hitbox?: AABB]>;
 
 export class ImageSprite extends Sprite {
   private frames: FramesMap | undefined;
@@ -104,14 +135,14 @@ export class ImageSprite extends Sprite {
     }
   }
 
-  addFrame(name: string, aabb: AABB): this {
-    this.frames ??= new Map();
-    this.frames.set(name, aabb);
-    if (!this.currentFrame) {
-      this.setCurrentFrame(name);
-    }
-    return this;
-  }
+  // addFrame(name: string, aabb: AABB): this {
+  //   this.frames ??= new Map();
+  //   this.frames.set(name, aabb);
+  //   if (!this.currentFrame) {
+  //     this.setCurrentFrame(name);
+  //   }
+  //   return this;
+  // }
 
   pickRandomFrame(): void {
     if (!this.frames) return;
@@ -125,16 +156,17 @@ export class ImageSprite extends Sprite {
   setCurrentFrame(name: string): void {
     const aabb = this.frames?.get(name);
     if (!aabb) throw new Error(`Unknown frame: ${name}`);
-    const [x1, y1, x2, y2] = aabb;
+    const [[x1, y1, x2, y2], localHitbox] = aabb;
     this.currentFrame = name;
     this.setSize(Math.abs(x2 - x1), Math.abs(y2 - y1));
+    this.setHitbox(localHitbox);
   }
 
   protected drawInner(ctx: CanvasRenderingContext2D): void {
     if (!this.image) return;
 
     if (this.frames) {
-      const [x1, y1, x2, y2] = this.frames.get(this.currentFrame)!;
+      const [[x1, y1, x2, y2]] = this.frames.get(this.currentFrame)!;
       ctx.save();
       ctx.scale((x2 - x1) / Math.abs(x2 - x1), (y2 - y1) / Math.abs(y2 - y1));
       translate(ctx, -this.width / 2, -this.height / 2);

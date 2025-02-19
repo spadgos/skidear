@@ -1,24 +1,23 @@
-import { FramesMap, ImageSprite } from './sprite.js';
+import { FramesMap, ImageSprite, Sprite } from './sprite.js';
 import { clamp, easeTo } from './lib.js';
 import { loadImageAndTransparentize } from "./canvas_lib.js";
 import { FrameEventData, KeyEventData } from './events.js';
 
-// const FRICTION = 0.50;
-// const FRICTION = 0.90;
-const SLOPE = 900;
-const ACCELERATION = 0.02; // 0-1
+const SLOPE = 900; // 900;
+const ACCELERATION = 0.015; // 0.02; // 0-1
+const DECELERATION = 0.05;
 const TURN_SPEED = 0.2; // 0-1
 const MAX_TURN_SPEED = Math.PI; // radians/sec
 const SPRITE_SHEET = './images/sprite-sheet.png';
 
 const frames: FramesMap = new Map([
-  ['left', [34, 6, 10, 40]],
-  ['hard-left', [58, 6, 34, 40]],
-  ['slight-left', [76, 6, 58, 40]],
-  ['straight', [76, 6, 93, 40]],
-  ['slight-right', [58, 6, 76, 40]],
-  ['hard-right', [34, 6, 58, 40]],
-  ['right', [10, 6, 34, 40]],
+  ['left', [[34, 6, 10, 40], [-10, 10, 12, 17]]],
+  ['hard-left', [[58, 6, 34, 40], [-11, 5, 9, 17]]],
+  ['slight-left', [[76, 6, 58, 40], [-7, 0, 9, 17]]],
+  ['straight', [[77, 6, 92, 40], [-6, 0, 6, 16]]],
+  ['slight-right', [[58, 6, 76, 40], [-9, 0, 7, 17]]],
+  ['hard-right', [[34, 6, 58, 40], [-9, 5, 11, 17]]],
+  ['right', [[10, 6, 34, 40], [-12, 10, 10, 17]]],
 ]);
 
 const turningFrames: readonly string[] = [
@@ -31,7 +30,7 @@ const turningFrames: readonly string[] = [
   'right'
 ];
 
-const ANGLE_STEP = Math.PI / 8;
+const ANGLE_STEP = Math.PI / 6;
 const MIN_ANGLE = -Math.PI / 2;
 const MAX_ANGLE = Math.PI / 2;
 const FOOT_SPEED = 100;
@@ -39,14 +38,17 @@ const FOOT_SPEED = 100;
 export const MAX_SPEED = SLOPE;
 
 export class Skiier extends ImageSprite {
+  speed: number = 0;
   angle: number = MIN_ANGLE;
   private targetAngle = this.angle;
-  
-  speed: number = 0;
 
   constructor() {
     super(loadImageAndTransparentize(SPRITE_SHEET));
     this.setFrames(frames);
+  }
+
+  onCollision(other: Sprite) {
+    this.speed = 0;
   }
 
   readonly onKeyDown = ({ key }: KeyEventData): void => {
@@ -85,7 +87,7 @@ export class Skiier extends ImageSprite {
     const xComponent = Math.sin(angle);
     const yComponent = Math.cos(angle);
     const targetSpeed = (yComponent ** 2) * SLOPE;
-    this.speed = easeTo(this.speed, targetSpeed, ACCELERATION, 1);
+    this.speed = easeTo(this.speed, targetSpeed, this.speed < targetSpeed ? ACCELERATION : DECELERATION, 1);
         
     const frameInd = angle === MIN_ANGLE ? 0 :
       angle === MAX_ANGLE ? 6 :

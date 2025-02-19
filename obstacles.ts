@@ -4,12 +4,12 @@ import { FramesMap, ImageSprite } from './sprite.js';
 const SPRITE_SHEET = './images/sprite-sheet.png';
 
 const framesMap: FramesMap = new Map([
-  ['mogul', [208, 223, 243, 240]],
-  ['mogul2', [242, 223, 274, 240]],
-  ['mogul3', [208, 240, 274, 259]],
-  ['tree', [297, 188, 326, 223]],
-  ['tree2', [328, 188, 358, 223]],
-  ['tree3', [359, 188, 386, 223]],
+  ['mogul', [[208, 223, 243, 240]]],
+  ['mogul2', [[242, 223, 274, 240]]],
+  ['mogul3', [[208, 240, 274, 259]]],
+  ['tree', [[297, 188, 326, 223], [-15, 13, 15, 17]]],
+  ['tree2', [[328, 188, 358, 223], [-15, 13, 15, 17]]],
+  ['tree3', [[359, 188, 386, 223], [-15, 13, 15, 17]]],
 ]);
 
 export class Obstacle extends ImageSprite {
