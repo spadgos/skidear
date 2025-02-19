@@ -11,7 +11,7 @@ export abstract class Sprite {
   width = 2;
   height = 2;
   private children: Sprite[] | undefined;
-  debug = false;
+  debug = true;
 
   private localHitbox: AABB | undefined;
   private globalHitboxCache: AABB | undefined;

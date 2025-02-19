@@ -30,7 +30,7 @@ class SkiDear extends Stage {
   async init(): Promise<void> {
     this.setBackground('#ffffff');
     const skiier = new Skiier();
-    // skiier.debug = true;
+    skiier.debug = true;
     this.skiier = skiier;
     this.addSprite(skiier);
 
