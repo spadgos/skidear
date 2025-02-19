@@ -1,0 +1,8 @@
+To start:
+
+npm run watch:build
+npm run livereload
+
+To test:
+
+npm run watch:test
