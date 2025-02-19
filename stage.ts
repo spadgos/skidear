@@ -1,6 +1,7 @@
 import {Sprite} from './sprite.js';
 import {Listener, convertKeyboardEvent, KeyEventData, FrameEventData} from './events.js';
-import { easeTo, getY, translate } from './lib.js';
+import { easeTo, getY } from './lib.js';
+import { translate } from "./canvas_lib.js";
 import { sortByY } from "./array_lib.js";
 import { insertSortedBy, removeFromSortedArray } from "./array_lib.js";
 

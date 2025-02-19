@@ -1,5 +1,6 @@
 import { FramesMap, ImageSprite } from './sprite.js';
-import { clamp, easeTo, loadImageAndTransparentize } from './lib.js';
+import { clamp, easeTo } from './lib.js';
+import { loadImageAndTransparentize } from "./canvas_lib.js";
 import { FrameEventData, KeyEventData } from './events.js';
 
 // const FRICTION = 0.50;

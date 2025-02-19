@@ -33,17 +33,18 @@ function sortedInsertPosition<T>(arr: readonly T[], item: T, fn: (item: T) => nu
 }
 
 export function indexOfSorted<T>(arr: readonly T[], item: T, fn: (item: T) => number): number {
-  let ind = sortedInsertPosition(arr, item, fn);
+  const ind = sortedInsertPosition(arr, item, fn);
+
+  // Did we land on it?
+  if (arr[ind] === item) return ind;
+
   const val = fn(item);
-  for (let i = 0, searchUp = true, searchDown = true; searchUp || searchDown; ++i) {
-    if (searchUp && arr[ind + i] === item) {
-      return ind + i;
+
+  // Check up and down for the element
+  for (let dir = -1; dir <= 1; dir += 2) {
+    for (let i = ind + dir; i >= 0 && i < arr.length && fn(arr[i]) === val; i += dir) {
+      if (arr[i] === item) return i;
     }
-    if (searchDown && arr[ind - i] === item) {
-      return ind - i;
-    }
-    searchUp &&= fn(arr[ind + i]) === val;
-    searchDown &&= fn(arr[ind - i]) === val;
   }
   return -1;
 }
