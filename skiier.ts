@@ -42,7 +42,7 @@ export class Skiier extends ImageSprite {
   angle: number = MIN_ANGLE;
   private targetAngle = this.angle;
   
-  speed: number = 100;
+  speed: number = 0;
 
   constructor() {
     super(loadImageAndTransparentize(SPRITE_SHEET));

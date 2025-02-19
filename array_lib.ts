@@ -1,4 +1,4 @@
-import { HasY } from "./lib";
+import { HasY } from './lib.js';
 
 function sortedInsertPosition<T>(arr: readonly T[], item: T, fn: (item: T) => number): number {
   const val = fn(item);

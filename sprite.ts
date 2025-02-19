@@ -1,7 +1,7 @@
 import { Listener, KeyEventData, FrameEventData } from './events.js';
 import { nthItem, randomInt } from './lib.js';
-import { translate } from "./canvas_lib.js";
-import { sortByY } from "./array_lib.js";
+import { translate } from './canvas_lib.js';
+import { sortByY } from './array_lib.js';
 
 export abstract class Sprite {
   x = 0;

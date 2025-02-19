@@ -1,4 +1,4 @@
-import { loadImageAndTransparentize } from "./canvas_lib.js";
+import { loadImageAndTransparentize } from './canvas_lib.js';
 import { FramesMap, ImageSprite } from './sprite.js';
 
 const SPRITE_SHEET = './images/sprite-sheet.png';

@@ -1,4 +1,4 @@
-import { memoize } from "./lib";
+import { memoize } from './lib.js';
 
 export const loadImage = memoize((url: string): Promise<HTMLImageElement> => {
   return new Promise((res, rej) => {

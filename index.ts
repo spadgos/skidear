@@ -2,7 +2,7 @@ import { Stage } from './stage.js';
 import { Skiier, MAX_SPEED } from './skiier.js';
 import { Obstacle } from './obstacles.js';
 import { clamp, randomInt, getY } from './lib.js';
-import { insertSortedBy } from "./array_lib.js";
+import { insertSortedBy } from './array_lib.js';
 
 async function main() {
   const canvas = document.createElement('canvas');
@@ -30,9 +30,9 @@ class SkiDear extends Stage {
   async init(): Promise<void> {
     this.setBackground('#ffffff');
     const skiier = new Skiier();
-    skiier.debug = true;
-
-    this.addSkiier(skiier);
+    // skiier.debug = true;
+    this.skiier = skiier;
+    this.addSprite(skiier);
 
     this.setViewport(0, this.skiier.y + this.height * 0.2);
 
@@ -50,11 +50,6 @@ class SkiDear extends Stage {
       this.addSprite(tree);
       insertSortedBy(this.trees, tree, getY);
     }
-  }
-
-  addSkiier(skiier: Skiier) {
-    this.skiier = skiier;
-    this.addSprite(skiier);
   }
 
   onBeforeRender = () => {
