@@ -8,11 +8,12 @@ export const loadImage = memoize((url: string): Promise<HTMLImageElement> => {
     img.src = url;
   });
 });
-// todo: could remove this if the source was a proper transparent png
 
+// todo: could remove this if the source was a proper transparent png
 export const loadImageAndTransparentize = memoize(async (url: string): Promise<OffscreenCanvas> => {
   return whiteToTransparent(await loadImage(url));
 });
+
 function whiteToTransparent(img: HTMLImageElement): OffscreenCanvas {
   const { width, height } = img;
   const canvas = new OffscreenCanvas(width, height);
