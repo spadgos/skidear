@@ -1,5 +1,12 @@
 export type HasY = { y: number };
 
+export interface SkiierImpact {
+  jump?: boolean;
+  crash?: boolean;
+  minSpeed?: number; // 0-1 of skiier max speed
+  maxSpeed?: number; // 0-1 of skiier max speed
+}
+
 export function randomInt(lowInclusive: number, highExclusive: number): number {
   return Math.floor(Math.random() * (highExclusive - lowInclusive)) + lowInclusive;
 }

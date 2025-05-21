@@ -10,17 +10,22 @@
     "watch:test": "nodemon --exec npm test",
     "prestart": "npm run build",
     "start": "python3 -m http.server 8080 --directory dist",
-    "watch:build": "nodemon --exec npm run build",
-    "build": "cp -ur *.html *.css *.ts images dist && tsc && touch dist/mark/timestamp.txt",
-    "livereload": "livereload -t dist/mark dist"
+    "watch:build": "nodemon --exec 'npm run build || exit 1'",
+    "build": "mkdir -p dist/mark && cp -ur *.html *.css *.ts images dist && tsc && touch dist/mark/timestamp.txt",
+    "livereloadoriginal": "livereload -t dist/mark dist",
+    "livereload": "livereload"
   },
   "devDependencies": {
     "jasmine-browser-runner": "^2.5.0",
-    "jasmine-core": "^5.4.0"
+    "jasmine-core": "^5.4.0",
+    "livereload": "^0.9.3",
+    "typescript": "^5.8.3"
   },
   "type": "module",
   "nodemonConfig": {
     "ext": "ts,html,css",
-    "ignore": ["**/dist/**"]
+    "ignore": [
+      "**/dist/**"
+    ]
   }
 }

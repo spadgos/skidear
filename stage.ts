@@ -6,20 +6,26 @@ import { insertSortedBy, removeFromSortedArray, sortByY } from './array_lib.js';
 
 type Edge = 'top'|'right'|'bottom'|'left';
 
+const VIEWPORT_EASING_STRENGTH = 0.25;
+const VIEWPORT_EASING_EPSILON = 0.1;
+const ZOOM_EASING_STRENGTH = 0.05;
+const ZOOM_EASING_EPSILON = 0.005;
+
 export class Stage {
   protected readonly sprites: Sprite[] = [];
   protected width: number;
   protected height: number;
   protected readonly context: CanvasRenderingContext2D;
 
-  protected zoom = 1;
+  private zoom = 1;
+  protected targetZoom: number | undefined = undefined;
 
   // The centerpoint of the viewport
   protected viewportX = 0;
   protected viewportY = 0;
   private targetViewportX: number | undefined;
   private targetViewportY: number | undefined;
-  
+
   protected background: string | undefined;
 
   protected rafId = 0;
@@ -41,7 +47,7 @@ export class Stage {
     this.startTime = this.lastFrameTime = Date.now();
     this.nextFrame();
   }
-  
+
   stop() {
     document.body.removeEventListener('keydown', this.onKeyDownPrivate);
     cancelAnimationFrame(this.rafId);
@@ -62,13 +68,17 @@ export class Stage {
     this.rafId = requestAnimationFrame(this.nextFrame);
   }
 
+  private spritesWithKeydown = new Set<Sprite>();
   private readonly onKeyDownPrivate = (e: KeyboardEvent) => {
+    let preventDefault = false;
     const newEvent = convertKeyboardEvent(e);
-    // todo: maybe gather these when the sprites are added and removed
-    for (const sprite of this.sprites) {
-      sprite.onKeyDown?.(newEvent);
+    for (const sprite of this.spritesWithKeydown) {
+      preventDefault = (sprite.onKeyDown!(newEvent) === false) || preventDefault;
     }
-    this.onKeyDown?.(newEvent);
+    preventDefault = (this.onKeyDown?.(newEvent) === false) || preventDefault;
+    if (preventDefault) {
+      e.preventDefault();
+    }
   }
 
   setBackground(color: string) {
@@ -80,7 +90,7 @@ export class Stage {
     this.viewportY = vy;
     this.targetViewportX = this.targetViewportY = undefined;
   }
-  
+
   animateViewport(vx: number, vy: number) {
     this.targetViewportX = vx;
     this.targetViewportY = vy;
@@ -88,41 +98,51 @@ export class Stage {
 
   addSprite(sprite: Sprite): void {
     insertSortedBy(this.sprites, sprite, getY);
+    if (sprite.onKeyDown) {
+      this.spritesWithKeydown.add(sprite);
+    }
   }
 
   removeSprite(sprite: Sprite): void {
     removeFromSortedArray(this.sprites, sprite, getY);
+    this.spritesWithKeydown.delete(sprite);
   }
 
   // positive number means it's to the outer side of that edge
   // negative number means it's to the inner side of that edge (might be outside the viewport on the opposite side though)
   // todo: handle zoom
-  distanceOutsideViewportEdge(edge: Edge, coord: number): number {
+  protected distanceOutsideViewportEdge(edge: Edge, coord: number): number {
     const edgeCoord = this.getViewportEdge(edge);
     switch (edge) {
       case 'left':
       case 'top': return edgeCoord - coord;
-      case 'right': 
+      case 'right':
       case 'bottom': return coord - edgeCoord;
     }
   }
 
-  getViewportEdge(edge: Edge): number {
-    const {viewportX: vx, viewportY: vy, width, height} = this;
+  protected getViewportEdge(edge: Edge): number {
+    const {viewportX: vx, viewportY: vy, width, height, zoom} = this;
     switch (edge) {
-      case 'top': return vy - height / 2;
-      case 'right': return vx + width / 2;
-      case 'bottom': return vy + height / 2;
-      case 'left': return vx - width / 2;
+      case 'top': return vy - (height / zoom) / 2;
+      case 'right': return vx + (width / zoom) / 2;
+      case 'bottom': return vy + (height / zoom) / 2;
+      case 'left': return vx - (width / zoom) / 2;
     }
   }
 
   private animate() {
     if (this.targetViewportX != null && this.targetViewportY != null) {
-      this.viewportX = easeTo(this.viewportX, this.targetViewportX, 0.25, 0.1);
-      this.viewportY = easeTo(this.viewportY, this.targetViewportY, 0.25, 0.1);
+      this.viewportX = easeTo(this.viewportX, this.targetViewportX, VIEWPORT_EASING_STRENGTH, VIEWPORT_EASING_EPSILON);
+      this.viewportY = easeTo(this.viewportY, this.targetViewportY, VIEWPORT_EASING_STRENGTH, VIEWPORT_EASING_EPSILON);
       if (this.viewportX === this.targetViewportX && this.viewportY === this.targetViewportY) {
         this.targetViewportX = this.targetViewportY = undefined;
+      }
+    }
+    if (this.targetZoom != null) {
+      this.zoom = easeTo(this.zoom, this.targetZoom, ZOOM_EASING_STRENGTH, ZOOM_EASING_EPSILON);
+      if (this.zoom === this.targetZoom) {
+        this.targetZoom = undefined;
       }
     }
   }
@@ -138,7 +158,9 @@ export class Stage {
       ctx.restore();
     }
     ctx.save();
-    translate(ctx, -this.viewportX + this.width / 2, -this.viewportY + this.height / 2);
+    translate(ctx, -this.viewportX + this.width / 2, 0);
+    ctx.scale(this.zoom, this.zoom);
+    translate(ctx, 0, -this.viewportY + this.height / 2);
     sortByY(this.sprites);
     for (const sprite of this.sprites) {
       sprite.draw(ctx);

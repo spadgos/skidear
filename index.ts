@@ -1,5 +1,5 @@
 import { Stage } from './stage.js';
-import { Skiier, MAX_SPEED } from './skiier.js';
+import { Skiier, MAX_SPEED, SkiierState } from './skiier.js';
 import { Obstacle } from './obstacles.js';
 import { clamp, randomInt, getY } from './lib.js';
 import { insertSortedBy } from './array_lib.js';
@@ -19,8 +19,8 @@ async function main() {
   Object.assign(window, { stage, skiier: stage.skiier });
 }
 
-// 1 tree per X area. Lower = more dense
-const TREE_DENSITY = 20000;
+// 1 obstacle per X area. Lower = more dense
+const OBSTACLE_DENSITY = 20000;
 
 class SkiDear extends Stage {
   skiier!: Skiier;
@@ -38,7 +38,7 @@ class SkiDear extends Stage {
 
     const numObsts =
       this.targetObstacleCount =
-      Math.round((this.width * this.height) / TREE_DENSITY);
+      Math.round((this.width * this.height) / OBSTACLE_DENSITY);
 
     const top = this.getViewportEdge('top');
     const right = this.getViewportEdge('right');
@@ -54,12 +54,20 @@ class SkiDear extends Stage {
   }
 
   onPrepareFrame = () => {
-    // Check for collisions. This is just O(N) for now, but could be improved
-    // since obstacles is sorted by Y position
     const {skiier} = this;
-    for (const obst of this.obstacles) {
-      if (skiier.intersectsWith(obst)) {
-        skiier.onCollision(obst);
+    if (skiier.state === SkiierState.AIRBORNE) {
+      if (skiier.zSpeed < 0 && skiier.z <= 0) {
+        skiier.setState(SkiierState.SKIING);
+      }
+    }
+    if (!skiier.noClip) { // if noClip is true, then nothing will intersect
+      // Check for collisions. This is just O(N) for now, but could be improved
+      // since obstacles is sorted by Y position
+      for (const obst of this.obstacles) {
+        if (skiier.intersectsWith(obst)) {
+          skiier.onCollision(obst);
+          break; // I guess?
+        }
       }
     }
   };
@@ -72,6 +80,7 @@ class SkiDear extends Stage {
   private adjustViewport() {
     const speedPct = (this.skiier.speed * Math.cos(this.skiier.angle)) / MAX_SPEED;
     const lag = Math.cos(speedPct * Math.PI / 2) * -0.2 + 0.4;
+    // this.targetZoom = 1 - (speedPct * 0.5);
     this.animateViewport(
       clamp(-this.width, this.skiier.x / 1.5, this.width),
       Math.max(this.viewportY, this.skiier.y + this.height * lag)

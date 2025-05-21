@@ -1,4 +1,4 @@
-import { Listener, KeyEventData, FrameEventData } from './events.js';
+import { Listener, KeyEventData, FrameEventData, StateChangeData } from './events.js';
 import { AABB, intersects, nthItem, randomInt } from './lib.js';
 import { translate } from './canvas_lib.js';
 import { sortByY } from './array_lib.js';
@@ -6,6 +6,7 @@ import { sortByY } from './array_lib.js';
 export abstract class Sprite {
   x = 0;
   y = 0;
+  z = 0;
   rotation = 0; // radians
   scale = 1;
   width = 2;
@@ -13,26 +14,42 @@ export abstract class Sprite {
   private children: Sprite[] | undefined;
   debug = false;
 
+  /** If true, `intersectsWith` will always be false. */
+  noClip = false;
+
   private localHitbox: AABB | undefined;
   private globalHitboxCache: AABB | undefined;
 
   onKeyDown: Listener<KeyEventData> | undefined;
   onBeforeRender: Listener<FrameEventData> | undefined;
 
-  setPos(x: number, y: number): void {
+  setPos(x: number, y: number, z = 0): void {
     this.x = x;
     this.y = y;
+    this.z = Math.max(0, z);
     this.globalHitboxCache = undefined;
   }
 
-  getHitbox(): AABB {
-    const local = this.localHitbox;
-    return this.globalHitboxCache ??= [
-      this.x + (local?.[0] ?? -this.width / 2),
-      this.y + (local?.[1] ?? -this.height / 2),
-      this.x + (local?.[2] ?? this.width / 2),
-      this.y + (local?.[3] ?? this.height / 2),
+  getLocalHitbox(): AABB {
+    return this.localHitbox ??= [
+      -this.width / 2,
+      -this.height / 2,
+      this.width / 2,
+      this.height / 2,
     ];
+  }
+
+  getHitbox(): AABB {
+    if (!this.globalHitboxCache) {
+      const local = this.getLocalHitbox();
+      this.globalHitboxCache = [
+        this.x + local[0],
+        this.y + local[1],
+        this.x + local[2],
+        this.y + local[3],
+      ];
+    }
+    return this.globalHitboxCache;
   }
 
   setHitbox(hitbox: AABB | undefined): void {
@@ -56,39 +73,56 @@ export abstract class Sprite {
   }
 
   intersectsWith(other: Sprite): boolean {
+    if (this.noClip || other.noClip) return false;
     return intersects(this.getHitbox(), other.getHitbox());
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
+    const {scale, width, height, rotation, children, debug} = this;
     const x = Math.round(this.x);
     const y = Math.round(this.y);
     ctx.save();
     ctx.translate(x, y);
-    ctx.scale(this.scale, this.scale);
-    ctx.rotate(this.rotation);
+    ctx.scale(scale, scale);
+    ctx.rotate(rotation);
     let childIndex = 0;
-    if (this.children) {
-      sortByY(this.children);
+    if (this.z > 0) {
+      // draw a shadow on the ground
+      ctx.save();
+      ctx.fillStyle = '#000';
+      ctx.globalAlpha = zToAlpha(this.z);
+      ctx.beginPath();
+      const [l, t, r, b] = this.getLocalHitbox();
+      ctx.ellipse((r + l) / 2, (b + t) / 2, (r - l) / 2, (b - t) / 2, 0, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.restore();
+      ctx.translate(0, -this.z);
+    }
+    if (children) {
+      sortByY(children);
       for (;
-        childIndex < this.children.length && this.children[childIndex].y < 0;
+        childIndex < children.length && children[childIndex].y < 0;
         ++childIndex) {
-        this.children[childIndex].draw(ctx);
+        children[childIndex].draw(ctx);
       }
     }
     this.drawInner(ctx);
-    if (this.children) {
-      for (; childIndex < this.children.length; ++childIndex) {
-        this.children[childIndex].draw(ctx);
+    if (children) {
+      for (; childIndex < children.length; ++childIndex) {
+        children[childIndex].draw(ctx);
       }
     }
-    if (this.debug) {
+    if (debug) {
       ctx.save();
+      ctx.translate(0.5, 0.5)
       ctx.fillStyle = '#f0f';
       ctx.strokeStyle = '#f0f';
       ctx.lineWidth = 1;
-      ctx.fillText(this.debugText(), this.width / 2, this.height / 2);
-      const [l, t, r, b] = this.getHitbox();
-      ctx.strokeRect(l - x + 0.5, t - y + 0.5, r - l, b - t);
+      ctx.fillText(this.debugText(), width / 2, height / 2);
+      const [l, t, r, b] = this.getHitbox(); // global coords
+      ctx.strokeRect(l - x, t - y, r - l, b - t);
+      ctx.strokeStyle = '#f008';
+      ctx.strokeRect(-width / 2, -height / 2, width, height);
       ctx.restore();
     }
     ctx.restore();
@@ -107,7 +141,7 @@ export type ImageSource = HTMLImageElement | HTMLCanvasElement | ImageBitmap | O
 
 export type FramesMap = Map<string, [frameDimensions: AABB, hitbox?: AABB]>;
 
-export class ImageSprite extends Sprite {
+export class ImageSprite<S = unknown> extends Sprite {
   private frames: FramesMap | undefined;
   private currentFrame: string = '';
   private image: ImageSource | undefined;
@@ -154,6 +188,7 @@ export class ImageSprite extends Sprite {
   }
 
   setCurrentFrame(name: string): void {
+    if (this.currentFrame === 'name') return;
     const aabb = this.frames?.get(name);
     if (!aabb) throw new Error(`Unknown frame: ${name}`);
     const [[x1, y1, x2, y2], localHitbox] = aabb;
@@ -188,4 +223,10 @@ export class ImageSprite extends Sprite {
       ctx.drawImage(this.image, 0, 0);
     }
   }
+}
+
+// Converts a z value to the alpha value of the shadow to draw underneath the sprite
+// Starts at 0, peaks at z ~= 30 @ alpha = 0.42 and gets lower from there asymptotically.
+function zToAlpha(z: number): number {
+  return z / 25 * (Math.E ** (-0.034657 * z));
 }

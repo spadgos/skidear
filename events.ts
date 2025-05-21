@@ -7,8 +7,13 @@ export interface FrameEventData {
   readonly timeSinceStart: number;
 }
 
+export interface StateChangeData<S> {
+  readonly prev: S | undefined;
+  readonly curr: S | undefined;
+}
+
 export interface Listener<T = void> {
-  (event: T): void;
+  (event: T): boolean|void;
 }
 
 export function convertKeyboardEvent(event: KeyboardEvent): KeyEventData {
