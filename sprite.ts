@@ -1,4 +1,4 @@
-import { Listener, KeyEventData, FrameEventData, StateChangeData } from './events.js';
+import { Listener, KeyEventData, FrameEventData } from './events.js';
 import { AABB, intersects, nthItem, randomInt } from './lib.js';
 import { translate } from './canvas_lib.js';
 import { sortByY } from './array_lib.js';
@@ -141,7 +141,7 @@ export type ImageSource = HTMLImageElement | HTMLCanvasElement | ImageBitmap | O
 
 export type FramesMap = Map<string, [frameDimensions: AABB, hitbox?: AABB]>;
 
-export class ImageSprite<S = unknown> extends Sprite {
+export class ImageSprite extends Sprite {
   private frames: FramesMap | undefined;
   private currentFrame: string = '';
   private image: ImageSource | undefined;

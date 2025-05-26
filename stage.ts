@@ -43,6 +43,7 @@ export class Stage {
   }
 
   start() {
+    // focus lock?
     document.body.addEventListener('keydown', this.onKeyDownPrivate);
     this.startTime = this.lastFrameTime = Date.now();
     this.nextFrame();

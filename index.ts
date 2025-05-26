@@ -6,11 +6,13 @@ import { insertSortedBy } from './array_lib.js';
 
 async function main() {
   const canvas = document.createElement('canvas');
-  canvas.width = 640;
-  canvas.height = 480;
-  canvas.style.imageRendering = 'pixelated';
-  canvas.style.width = `${canvas.width * 2}px`;
-  canvas.style.height = `${canvas.height * 2}px`;
+  // canvas.width = 640;
+  // canvas.height = 480;
+  // canvas.style.imageRendering = 'pixelated';
+  // canvas.style.width = `${canvas.width * 2}px`;
+  // canvas.style.height = `${canvas.height * 2}px`;
+  canvas.width = 1280;
+  canvas.height = 960;
   document.body.appendChild(canvas);
   const stage = new SkiDear(canvas);
   await stage.init();
