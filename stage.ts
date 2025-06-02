@@ -82,6 +82,8 @@ export class Stage {
     }
   }
 
+  drawChrome(ctx: CanvasRenderingContext2D) {}
+
   setBackground(color: string) {
     this.background = color;
   }
@@ -167,5 +169,7 @@ export class Stage {
       sprite.draw(ctx);
     }
     ctx.restore();
+
+    this.drawChrome(ctx);
   }
 }

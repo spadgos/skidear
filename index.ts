@@ -7,11 +7,6 @@ import { Decoration } from './decoration.js';
 
 async function main() {
   const canvas = document.createElement('canvas');
-  // canvas.width = 640;
-  // canvas.height = 480;
-  // canvas.style.imageRendering = 'pixelated';
-  // canvas.style.width = `${canvas.width * 2}px`;
-  // canvas.style.height = `${canvas.height * 2}px`;
   canvas.width = 1280;
   canvas.height = 960;
   document.body.appendChild(canvas);
@@ -23,16 +18,20 @@ async function main() {
 }
 
 // 1 obstacle per X area. Lower = more dense
-const OBSTACLE_DENSITY = 20000;
+const OBSTACLE_DENSITY = 30000;
 
 class SkiDear extends Stage {
   skiier!: Skiier;
   obstacles: Obstacle[] = [];
   haveYouSeenThis!: Decoration;
+  lobsterLogo!: Decoration;
+
+  private fontFace = 'Arial';
 
   private targetObstacleCount = 0;
 
   async init(): Promise<void> {
+
     this.setBackground('#ffffff');
     const skiier = new Skiier();
     // skiier.debug = true;
@@ -45,7 +44,7 @@ class SkiDear extends Stage {
       this.targetObstacleCount =
       Math.round((this.width * this.height) / OBSTACLE_DENSITY);
 
-    const top = this.getViewportEdge('top');
+    // const top = this.getViewportEdge('top');
     const right = this.getViewportEdge('right');
     const bottom = this.getViewportEdge('bottom');
     const left = this.getViewportEdge('left');
@@ -64,10 +63,27 @@ class SkiDear extends Stage {
     const titleSprite = new Decoration('title');
     titleSprite.setPos(100, -100, 50);
     this.addSprite(titleSprite);
+
+    this.lobsterLogo = new Decoration('lobsterSki');
+
+    await this.loadFont();
+  }
+
+  private async loadFont() {
+    try {
+      const font = await new FontFace(
+        'Press Start 2P',
+        'url(https://fonts.gstatic.com/s/pressstart2p/v15/e3t4euO8T-267oIAQAu6jDQyK3nVivNm4I81.woff2)'
+        // "url('https://fonts.googleapis.com/css2?family=Press+Start+2P')"
+      ).load();
+
+      this.fontFace = 'Press Start 2P';
+      document.fonts.add(font);
+    } catch {}
   }
 
   onPrepareFrame = () => {
-    const {skiier} = this;
+    const { skiier } = this;
     if (skiier.state === SkiierState.AIRBORNE) {
       if (skiier.zSpeed < 0 && skiier.z <= 0) {
         skiier.setState(SkiierState.SKIING);
@@ -84,6 +100,10 @@ class SkiDear extends Stage {
       }
     }
   };
+
+  getScore(): number {
+    return Math.round(this.skiier.y / 100) * 10;
+  }
 
   onBeforeRender = () => {
     this.adjustViewport();
@@ -131,6 +151,31 @@ class SkiDear extends Stage {
         this.addSprite(tree);
       }
     }
+  }
+
+  override drawChrome(ctx: CanvasRenderingContext2D): void {
+    const padding = 20;
+    ctx.save();
+    const { width, height, lobsterLogo } = this;
+
+    // lobsterLogo.scale = 1.5;
+    const lw = lobsterLogo.width * lobsterLogo.scale;
+    const lh = lobsterLogo.height * lobsterLogo.scale;
+    const lx = width - (lw / 2) - padding;
+    const ly = (lh / 2) + padding;
+    lobsterLogo.setPos(lx, ly);
+    lobsterLogo.draw(ctx);
+
+    const scoreString = `Score: ${this.getScore()}`;
+    const size = 18;
+    ctx.fillStyle = '#000';
+
+    ctx.font = `${size}px "${this.fontFace}"`;
+    const metrics = ctx.measureText(scoreString);
+
+    ctx.fillText(scoreString, width - padding - metrics.width, ly + lh / 2 + padding + size / 2);
+
+    ctx.restore();
   }
 }
 

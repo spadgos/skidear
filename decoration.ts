@@ -33,6 +33,9 @@ const frameMeta: { [name: string]: { aabb: AABB, hitbox?: AABB, hoverMeta?: Hove
       amplitude: 10,
       frequency: 1 / 5,  // up and down in 5 seconds
     }
+  },
+  'lobsterSki': {
+    aabb: [568, 520, 634, 586]
   }
 };
 
