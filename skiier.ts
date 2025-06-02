@@ -1,6 +1,6 @@
 import { FramesMap, ImageSprite } from './sprite.js';
 import { clamp, easeTo } from './lib.js';
-import { loadImageAndTransparentize } from "./canvas_lib.js";
+import { loadImage } from "./canvas_lib.js";
 import { FrameEventData, KeyEventData, Listener } from './events.js';
 import { Obstacle } from './obstacles.js';
 
@@ -9,7 +9,7 @@ const ACCELERATION = 0.015; // 0.02; // 0-1
 const DECELERATION = 0.05;
 const TURN_SPEED = 0.2; // 0-1
 const MAX_TURN_SPEED = Math.PI; // radians/sec
-const SPRITE_SHEET = './images/ski-free-edit_2x7.png';
+const SPRITE_SHEET = './images/ski-free-edit_2x8.png';
 // When hitting a jump, the z speed will be set according to this angle and the current speed
 const RAMP_ANGLE = Math.PI / 18; // 15 deg
 const GRAVITY = 98; // m/s/s
@@ -58,7 +58,7 @@ export class Skiier extends ImageSprite {
   state: SkiierState = SkiierState.SKIING;
 
   constructor() {
-    super(loadImageAndTransparentize(SPRITE_SHEET));
+    super(loadImage(SPRITE_SHEET));
     this.setFrames(frames);
     // this.debug = true;
     // this.scale = 0.25;

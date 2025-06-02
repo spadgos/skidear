@@ -1,4 +1,6 @@
 export type HasY = { y: number };
+export type HasZ = { z: number };
+export type HasYZ = HasY & HasZ;
 
 export interface SkiierImpact {
   jump?: boolean;
@@ -25,6 +27,10 @@ export function dist(x1: number, y1: number, x2: number, y2: number) {
 
 export function getY(item: HasY): number {
   return item.y;
+}
+
+export function getZ(item: HasZ): number {
+  return item.z;
 }
 
 // memoize a function with 1 param

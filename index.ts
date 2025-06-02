@@ -3,6 +3,7 @@ import { Skiier, MAX_SPEED, SkiierState } from './skiier.js';
 import { Obstacle } from './obstacles.js';
 import { clamp, randomInt, getY } from './lib.js';
 import { insertSortedBy } from './array_lib.js';
+import { Decoration } from './decoration.js';
 
 async function main() {
   const canvas = document.createElement('canvas');
@@ -27,6 +28,8 @@ const OBSTACLE_DENSITY = 20000;
 class SkiDear extends Stage {
   skiier!: Skiier;
   obstacles: Obstacle[] = [];
+  haveYouSeenThis!: Decoration;
+
   private targetObstacleCount = 0;
 
   async init(): Promise<void> {
@@ -49,10 +52,18 @@ class SkiDear extends Stage {
     for (let i = 0; i <= Math.floor(numObsts / 2); ++i) {
       const obst = new Obstacle();
       // obst.setPos(randomInt(left, right), randomInt(top, bottom + 4 * this.height));
-      obst.setPos(randomInt(left, right), randomInt(top, bottom));
+      obst.setPos(randomInt(left, right), randomInt(50, bottom));
       this.addSprite(obst);
       insertSortedBy(this.obstacles, obst, getY);
     }
+
+    const haveYouSeenThis = this.haveYouSeenThis = new Decoration('haveYouSeenThis');
+    haveYouSeenThis.setPos(-100, -100, 50);
+    this.addSprite(haveYouSeenThis);
+
+    const titleSprite = new Decoration('title');
+    titleSprite.setPos(100, -100, 50);
+    this.addSprite(titleSprite);
   }
 
   onPrepareFrame = () => {
@@ -91,17 +102,25 @@ class SkiDear extends Stage {
 
   private addObstacles() {
     let popped: Obstacle[] | undefined;
+    const bottom = this.getViewportEdge('bottom');
+    const left = this.getViewportEdge('left');
+    const buffer = 0.2;
+    const { width, height } = this;
+
+    if (this.distanceOutsideViewportEdge('top', this.haveYouSeenThis.y) > 50) {
+      this.haveYouSeenThis.setPos(
+        randomInt(left - width * buffer, left + width * (1 + buffer)),
+        randomInt(bottom + 50, bottom + height),
+      );
+    }
+
     while (this.obstacles.length && this.distanceOutsideViewportEdge('top', this.obstacles[0].y) > 50) {
-      const tree = this.obstacles.shift()!;
+      const obst = this.obstacles.shift()!;
       popped ??= [];
-      popped.push(tree);
-      this.removeSprite(tree);
+      popped.push(obst);
+      this.removeSprite(obst);
     }
     if (this.obstacles.length < this.targetObstacleCount) {
-      const bottom = this.getViewportEdge('bottom');
-      const left = this.getViewportEdge('left');
-      const { width, height } = this;
-      const buffer = 0.2;
       while (this.obstacles.length < this.targetObstacleCount) {
         const tree = popped?.pop() ?? new Obstacle();
         tree.setPos(

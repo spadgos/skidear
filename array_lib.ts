@@ -1,4 +1,4 @@
-import { HasY } from './lib.js';
+import { HasY, HasYZ } from './lib.js';
 
 function sortedInsertPosition<T>(arr: readonly T[], item: T, fn: (item: T) => number): number {
   const val = fn(item);
@@ -70,8 +70,8 @@ export function removeFromSortedArray<T>(arr: T[], item: T, fn: (item: T) => num
   return arr;
 }
 
-export function sortByY<T extends HasY>(items: T[]): void {
+export function sortByYZ<T extends HasYZ>(items: T[]): void {
   items.sort(sortByYComparator);
 }
-const sortByYComparator = ({ y: a }: HasY, { y: b }: HasY) => a - b;
+const sortByYComparator = ({ y: ay, z: az }: HasYZ, { y: by, z: bz }: HasYZ) => az - bz || ay - by;
 

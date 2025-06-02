@@ -1,7 +1,7 @@
 import { Listener, KeyEventData, FrameEventData } from './events.js';
 import { AABB, intersects, nthItem, randomInt } from './lib.js';
 import { translate } from './canvas_lib.js';
-import { sortByY } from './array_lib.js';
+import { sortByYZ } from './array_lib.js';
 
 export abstract class Sprite {
   x = 0;
@@ -21,7 +21,7 @@ export abstract class Sprite {
   private globalHitboxCache: AABB | undefined;
 
   onKeyDown: Listener<KeyEventData> | undefined;
-  onBeforeRender: Listener<FrameEventData> | undefined;
+  onBeforeRender?: Listener<FrameEventData>;
 
   setPos(x: number, y: number, z = 0): void {
     this.x = x;
@@ -81,25 +81,35 @@ export abstract class Sprite {
     const {scale, width, height, rotation, children, debug} = this;
     const x = Math.round(this.x);
     const y = Math.round(this.y);
+    const z = Math.round(this.z);
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(scale, scale);
     ctx.rotate(rotation);
     let childIndex = 0;
-    if (this.z > 0) {
+    if (z > 0) {
       // draw a shadow on the ground
       ctx.save();
       ctx.fillStyle = '#000';
-      ctx.globalAlpha = zToAlpha(this.z);
+      ctx.globalAlpha = zToAlpha(z);
       ctx.beginPath();
       const [l, t, r, b] = this.getLocalHitbox();
-      ctx.ellipse((r + l) / 2, (b + t) / 2, (r - l) / 2, (b - t) / 2, 0, 0, 2 * Math.PI);
+      const shadowScale = 1 - (z ** 0.35) / 10;
+      ctx.ellipse(
+        /* x */ (r + l) / 2,
+        /* y */ (b + t) / 2,
+        /* radiusX */ (r - l) / 2 * shadowScale,
+        /* radiusY */ (b - t) / 2 * shadowScale,
+        /* rotation */ 0,
+        /* startAngle */ 0,
+        /* endAngle */ 2 * Math.PI
+      );
       ctx.fill();
       ctx.restore();
-      ctx.translate(0, -this.z);
+      ctx.translate(0, -z);
     }
     if (children) {
-      sortByY(children);
+      sortByYZ(children);
       for (;
         childIndex < children.length && children[childIndex].y < 0;
         ++childIndex) {
@@ -137,16 +147,14 @@ export abstract class Sprite {
   protected abstract drawInner(context: CanvasRenderingContext2D): void;
 }
 
-export type ImageSource = HTMLImageElement | HTMLCanvasElement | ImageBitmap | OffscreenCanvas;
-
 export type FramesMap = Map<string, [frameDimensions: AABB, hitbox?: AABB]>;
 
 export class ImageSprite extends Sprite {
   private frames: FramesMap | undefined;
   private currentFrame: string = '';
-  private image: ImageSource | undefined;
+  private image: CanvasImageSource | undefined;
 
-  constructor(private imagePromise: ImageSource | Promise<ImageSource>) {
+  constructor(private imagePromise: CanvasImageSource | Promise<CanvasImageSource>) {
     super();
     void this.loadImage(imagePromise);
   }
@@ -155,7 +163,7 @@ export class ImageSprite extends Sprite {
     await this.imagePromise;
   }
 
-  async loadImage(image: ImageSource | Promise<ImageSource>) {
+  async loadImage(image: CanvasImageSource | Promise<CanvasImageSource>) {
     this.image = image instanceof Promise ? await image : image;
   }
 
@@ -178,10 +186,11 @@ export class ImageSprite extends Sprite {
   //   return this;
   // }
 
-  pickRandomFrame(): void {
+  pickRandomFrame(pickFromKeys?: string[]): void {
     if (!this.frames) return;
-    const frameInd = randomInt(0, this.frames.size);
-    const frameName = nthItem(this.frames.keys(), frameInd);
+    const frameNames = pickFromKeys ?? [...this.frames.keys()];
+    const frameInd = randomInt(0, frameNames.length);
+    const frameName = frameNames[frameInd];
     if (frameName) {
       this.setCurrentFrame(frameName);
     }

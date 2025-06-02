@@ -1,4 +1,5 @@
-import { indexOfSorted, insertSortedBy, removeFromSortedArray, sortByY } from '../array_lib.js';
+import { indexOfSorted, insertSortedBy, removeFromSortedArray, sortByYZ } from '../array_lib.js';
+import { HasYZ } from '../lib.js';
 
 function charCode(x: string): number {
   return x.charCodeAt(0);
@@ -43,19 +44,19 @@ describe('insertSortedBy', () => {
     const res = insertSortedBy(arr, 'b', charCode);
     expect(res).toBe(arr);
   })
-  
+
   it('adds items in the position defined by the order function at the start', () => {
     const arr = ['b', 'd', 'f', 'h', 'j'];
     insertSortedBy(arr, 'a', charCode);
     expect(arr).toEqual(['a', 'b', 'd', 'f', 'h', 'j']);
   });
-  
+
   it('adds items in the position defined by the order function at the end', () => {
     const arr = ['b', 'd', 'f', 'h', 'j'];
     insertSortedBy(arr, 'k', charCode);
     expect(arr).toEqual(['b', 'd', 'f', 'h', 'j', 'k']);
   });
-  
+
   it('adds items in the position defined by the order function in the middle', () => {
     const arr = ['b', 'd', 'f', 'h', 'j'];
     insertSortedBy(arr, 'e', charCode);
@@ -101,20 +102,20 @@ describe('removeFromSortedArray', () => {
   });
 });
 
-describe('sortByY', () => {
-  it('sorts elements by their Y property', () => {
+describe('sortByYZ', () => {
+  it('sorts elements by their Z property first, then their Y property', () => {
     const arr = [
-      { id: 'a', y: 10 },
-      { id: 'b', y: 5 },
-      { id: 'c', y: 100 },
-      { id: 'd', y: -3 },
+      { id: 'a', y: 10, z: 0 },
+      { id: 'b', y: 5, z: 0 },
+      { id: 'c', y: 100, z: 0 },
+      { id: 'd', y: -3, z: 1 },
     ];
-    sortByY(arr);
+    sortByYZ(arr);
     expect(arr).toEqual([
-      { id: 'd', y: -3 },
-      { id: 'b', y: 5 },
-      { id: 'a', y: 10 },
-      { id: 'c', y: 100 },
+      { id: 'b', y: 5, z: 0 },
+      { id: 'a', y: 10, z: 0 },
+      { id: 'c', y: 100, z: 0 },
+      { id: 'd', y: -3, z: 1 },
     ]);
   });
 });

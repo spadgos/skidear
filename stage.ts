@@ -2,7 +2,7 @@ import {Sprite} from './sprite.js';
 import {Listener, convertKeyboardEvent, KeyEventData, FrameEventData} from './events.js';
 import { easeTo, getY } from './lib.js';
 import { translate } from './canvas_lib.js';
-import { insertSortedBy, removeFromSortedArray, sortByY } from './array_lib.js';
+import { insertSortedBy, removeFromSortedArray, sortByYZ } from './array_lib.js';
 
 type Edge = 'top'|'right'|'bottom'|'left';
 
@@ -162,7 +162,7 @@ export class Stage {
     translate(ctx, -this.viewportX + this.width / 2, 0);
     ctx.scale(this.zoom, this.zoom);
     translate(ctx, 0, -this.viewportY + this.height / 2);
-    sortByY(this.sprites);
+    sortByYZ(this.sprites);
     for (const sprite of this.sprites) {
       sprite.draw(ctx);
     }
