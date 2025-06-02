@@ -2,40 +2,40 @@ import { loadImageAndTransparentize } from './canvas_lib.js';
 import { AABB, SkiierImpact } from './lib.js';
 import { FramesMap, ImageSprite } from './sprite.js';
 
-const SPRITE_SHEET = './images/sprite-sheet.png';
+const SPRITE_SHEET = './images/ski-free-edit_2x7.png';
 
 const MOGUL_MAX_SPEED = 0.1;
 
 const frameMeta: { [name: string]: { aabb: AABB, hitbox?: AABB, impact: SkiierImpact } } = {
   'mogul': {
-    aabb: [208, 223, 243, 240],
+    aabb: [416, 670, 486, 698],
     impact: { maxSpeed: MOGUL_MAX_SPEED },
   },
   'mogul2': {
-    aabb: [242, 223, 274, 240],
+    aabb: [484, 672, 548, 700],
     impact: { maxSpeed: MOGUL_MAX_SPEED },
   },
   'mogul3': {
-    aabb: [208, 240, 274, 259],
+    aabb: [416, 700, 548, 740],
     impact: { maxSpeed: MOGUL_MAX_SPEED },
   },
   'tree': {
-    aabb: [297, 188, 326, 223],
-    hitbox: [-15, 13, 15, 17],
+    aabb: [594, 600, 652, 668],
+    hitbox: [-25, 26, 25, 34],
     impact: { crash: true },
   },
   'tree2': {
-    aabb: [328, 188, 358, 223],
-    hitbox: [-15, 13, 15, 17],
+    aabb: [656, 600, 716, 668],
+    hitbox: [-25, 26, 25, 34],
     impact: { crash: true },
   },
   'tree3': {
-    aabb: [359, 188, 386, 223],
-    hitbox: [-15, 13, 15, 17],
+    aabb: [718, 600, 772, 668],
+    hitbox: [-25, 26, 25, 34],
     impact: { crash: true },
   },
   'jump': {
-    aabb: [224, 197, 257, 205],
+    aabb: [450, 615, 514, 630],
     impact: { jump: true }
   },
 };
@@ -52,6 +52,7 @@ export class Obstacle extends ImageSprite {
     super(loadImageAndTransparentize(SPRITE_SHEET));
     this.setFrames(framesMap);
     this.pickRandomFrame();
+    // this.debug = true;
     // this.setCurrentFrame('jump');
   }
 

@@ -9,7 +9,7 @@ const ACCELERATION = 0.015; // 0.02; // 0-1
 const DECELERATION = 0.05;
 const TURN_SPEED = 0.2; // 0-1
 const MAX_TURN_SPEED = Math.PI; // radians/sec
-const SPRITE_SHEET = './images/ski-free-edit6.png';
+const SPRITE_SHEET = './images/ski-free-edit_2x7.png';
 // When hitting a jump, the z speed will be set according to this angle and the current speed
 const RAMP_ANGLE = Math.PI / 18; // 15 deg
 const GRAVITY = 98; // m/s/s
@@ -20,30 +20,16 @@ export enum SkiierState {
   AIRBORNE,
 }
 
-// The original sprites
-// const SPRITE_SHEET = './images/sprite-sheet.png';
-// const frames: FramesMap = new Map([
-//   ['left', [[34, 6, 10, 40], [-10, 10, 12, 17]]],
-//   ['hard-left', [[58, 6, 34, 40], [-11, 5, 9, 17]]],
-//   ['slight-left', [[76, 6, 58, 40], [-7, 0, 9, 17]]],
-//   ['straight', [[77, 6, 92, 40], [-6, 0, 6, 16]]],
-//   ['slight-right', [[58, 6, 76, 40], [-9, 0, 7, 17]]],
-//   ['hard-right', [[34, 6, 58, 40], [-9, 5, 11, 17]]],
-//   ['right', [[10, 6, 34, 40], [-12, 10, 10, 17]]],
-//   ['air', [[93, 6, 127, 40], [-17, 10, 14, 17]]],
-//   ['crashed', [[288, 6, 320, 40], [-16, 10, 16, 17]]],
-// ]);
-
 const frames: FramesMap = new Map([
-  ['left', [[240, 230, 4, 410], [-110, 25, 80, 37]]],
-  ['hard-left', [[480, 230, 246, 410], [-105, 25, 0, 42]]],
-  ['slight-left', [[720, 230, 530, 410], [-80, 50, 0, 70]]],
-  ['straight', [[720, 200, 830, 410], [-50, 70, 50, 80]]],
-  ['slight-right', [[530, 230, 720, 410], [80, 50, 0, 70]]],
-  ['hard-right', [[246, 230, 480, 410], [0, 25, 105, 42]]],
-  ['right', [[4, 230, 240, 410], [-80, 53, 110, 63]]],
-  ['air', [[830, 180, 1000, 390], [-50, 70, 50, 80]]],
-  ['crashed', [[1720, 230, 1850, 410], [-16, 10, 16, 17]]],
+  ['left', [[120, 115, 2, 205], [-55, 12.5, 40, 18.5]]],
+  ['hard-left', [[240, 115, 123, 205], [-52.5, 12.5, 0, 21]]],
+  ['slight-left', [[360, 115, 265, 205], [-40, 25, 0, 35]]],
+  ['straight', [[360, 100, 415, 205], [-25, 35, 25, 40]]],
+  ['slight-right', [[265, 115, 360, 205], [40, 25, 0, 35]]],
+  ['hard-right', [[123, 115, 240, 205], [0, 12.5, 52.5, 21]]],
+  ['right', [[2, 115, 120, 205], [-40, 26.5, 55, 31.5]]],
+  ['air', [[415, 90, 500, 195], [-25, 35, 25, 40]]],
+  ['crashed', [[860, 115, 925, 205], [-8, 5, 8, 8.5]]],
 ]);
 const turningFrames: readonly string[] = [
   'left',
