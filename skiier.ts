@@ -161,11 +161,13 @@ export class Skiier extends ImageSprite {
     }
   }
 
-  readonly onBeforeRender = ({ frameDelta }: FrameEventData) => {
+  override onBeforeRender(event: FrameEventData) {
+    super.onBeforeRender(event);
     if (this.state === SkiierState.CRASHED) {
       this.setCurrentFrame('crashed');
       return;
     }
+    const { frameDelta } = event;
     const secondsElapsed = frameDelta / 1000;
     const { x, y, z, state } = this;
 
@@ -180,7 +182,7 @@ export class Skiier extends ImageSprite {
 
     const xComponent = Math.sin(angle);
     const yComponent = Math.cos(angle);
-    const targetSpeed = (yComponent ** 2) * SLOPE;
+    const targetSpeed = (yComponent ** 2) * SLOPE * (state === SkiierState.AIRBORNE ? 1.2 : 1);
     this.speed = easeTo(
       this.speed,
       targetSpeed,

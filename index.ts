@@ -4,6 +4,9 @@ import { Obstacle } from './obstacles.js';
 import { clamp, randomInt, getY } from './lib.js';
 import { insertSortedBy } from './array_lib.js';
 import { Decoration } from './decoration.js';
+import { Robot, RobotState } from './robot.js';
+import { TextAlign, TextSprite } from './text_sprite.js';
+import { FrameEventData } from './events.js';
 
 async function main() {
   const canvas = document.createElement('canvas');
@@ -17,26 +20,33 @@ async function main() {
   Object.assign(window, { stage, skiier: stage.skiier });
 }
 
+const ROBOT_TRIGGER = {
+  headstart: 200,
+  offset: 200,
+}
+
 // 1 obstacle per X area. Lower = more dense
 const OBSTACLE_DENSITY = 30000;
+const fontFamily = 'Press Start 2P';
 
 class SkiDear extends Stage {
   skiier!: Skiier;
   obstacles: Obstacle[] = [];
   haveYouSeenThis!: Decoration;
-  lobsterLogo!: Decoration;
-
-  private fontFace = 'Arial';
+  scoreSprite!: TextSprite;
+  robot!: Robot;
 
   private targetObstacleCount = 0;
 
   async init(): Promise<void> {
-
     this.setBackground('#ffffff');
-    const skiier = new Skiier();
+    const skiier = this.skiier = new Skiier();
     // skiier.debug = true;
-    this.skiier = skiier;
     this.addSprite(skiier);
+
+    const robot = this.robot = new Robot(skiier);
+    robot.setPos(150, -50);
+    this.addSprite(robot);
 
     this.setViewport(0, this.skiier.y + this.height * 0.2);
 
@@ -64,10 +74,48 @@ class SkiDear extends Stage {
     titleSprite.setPos(100, -100, 50);
     this.addSprite(titleSprite);
 
-    this.lobsterLogo = new Decoration('lobsterSki');
+    const titleText = new TextSprite({
+      text: 'LOBSTER CAR SKI FREE',
+      fontFamily,
+      fontSize: 48,
+      align: TextAlign.CENTER,
+      color: '#fb551c'
+    });
+    titleText.setPos(0, -50);
+    this.addSprite(titleText);
 
+    this.setupChromeSprites();
     await this.loadFont();
   }
+
+  private setupChromeSprites() {
+    const padding = 20;
+    const {width} = this;
+
+    const lobsterLogo = new Decoration('lobsterSki');
+    const lw = lobsterLogo.width * lobsterLogo.scale;
+    const lh = lobsterLogo.height * lobsterLogo.scale;
+    const lx = width - (lw / 2) - padding;
+    const ly = (lh / 2) + padding;
+    lobsterLogo.setPos(lx, ly);
+
+    const score = this.scoreSprite = new TextSprite({
+      fontFamily,
+      fontSize: 18,
+      color: '#000',
+      align: TextAlign.RIGHT,
+    });
+    score.setPos(width - padding, ly + lh / 2 + padding + 9 /* half fontSize */);
+
+    this.chromeSprites.push(
+      score,
+      lobsterLogo,
+    );
+  }
+
+  readonly onBeforeRenderChrome = (event: FrameEventData): void => {
+    this.scoreSprite.text = `Score: ${this.getScore()}`;
+  };
 
   private async loadFont() {
     try {
@@ -77,7 +125,6 @@ class SkiDear extends Stage {
         // "url('https://fonts.googleapis.com/css2?family=Press+Start+2P')"
       ).load();
 
-      this.fontFace = 'Press Start 2P';
       document.fonts.add(font);
     } catch {}
   }
@@ -99,6 +146,15 @@ class SkiDear extends Stage {
         }
       }
     }
+    if (this.robot.state === RobotState.WAITING && this.getScore() > ROBOT_TRIGGER.headstart) {
+      console.log('GO ROBOT');
+      this.robot.setPos(
+        skiier.x,
+        skiier.y - ROBOT_TRIGGER.offset,
+      );
+
+      this.robot.setState(RobotState.RUNNING);
+    }
   };
 
   getScore(): number {
@@ -112,7 +168,8 @@ class SkiDear extends Stage {
 
   private adjustViewport() {
     const speedPct = (this.skiier.speed * Math.cos(this.skiier.angle)) / MAX_SPEED;
-    const lag = Math.cos(speedPct * Math.PI / 2) * -0.2 + 0.4;
+    const lag = Math.cos(speedPct * Math.PI / 2) * -0.2
+              + (this.robot.state === RobotState.RUNNING ? 0.2 : 0.3);
     // this.targetZoom = 1 - (speedPct * 0.5);
     this.animateViewport(
       clamp(-this.width, this.skiier.x / 1.5, this.width),
@@ -151,31 +208,6 @@ class SkiDear extends Stage {
         this.addSprite(tree);
       }
     }
-  }
-
-  override drawChrome(ctx: CanvasRenderingContext2D): void {
-    const padding = 20;
-    ctx.save();
-    const { width, height, lobsterLogo } = this;
-
-    // lobsterLogo.scale = 1.5;
-    const lw = lobsterLogo.width * lobsterLogo.scale;
-    const lh = lobsterLogo.height * lobsterLogo.scale;
-    const lx = width - (lw / 2) - padding;
-    const ly = (lh / 2) + padding;
-    lobsterLogo.setPos(lx, ly);
-    lobsterLogo.draw(ctx);
-
-    const scoreString = `Score: ${this.getScore()}`;
-    const size = 18;
-    ctx.fillStyle = '#000';
-
-    ctx.font = `${size}px "${this.fontFace}"`;
-    const metrics = ctx.measureText(scoreString);
-
-    ctx.fillText(scoreString, width - padding - metrics.width, ly + lh / 2 + padding + size / 2);
-
-    ctx.restore();
   }
 }
 

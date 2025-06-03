@@ -15,7 +15,7 @@ interface HoverMeta {
 
 const frameMeta: { [name: string]: { aabb: AABB, hitbox?: AABB, hoverMeta?: HoverMeta } } = {
   'haveYouSeenThis': {
-    aabb: [16, 565, 138, 690],
+    aabb: [16, 565, 137, 690],
     hitbox: [-60, 0, 60, 40],
     hoverMeta: {
       offset: 0,
@@ -47,6 +47,7 @@ const framesMap: FramesMap = new Map(
 export class Decoration extends ImageSprite {
 
   noClip = true;
+  private hoverMeta: HoverMeta | undefined;
 
   constructor(frameName?: string) {
     super(loadImage(SPRITE_SHEET));
@@ -61,18 +62,18 @@ export class Decoration extends ImageSprite {
 
   override setCurrentFrame(name: string): void {
     super.setCurrentFrame(name);
-    this.onBeforeRender = this.createOnBeforeRender(frameMeta[name].hoverMeta);
+    this.hoverMeta = frameMeta[name].hoverMeta;
   }
 
   getImpact(): SkiierImpact {
     return {};
   }
 
-  private createOnBeforeRender(meta: HoverMeta | undefined): Listener<FrameEventData> | undefined {
-    if (!meta) return undefined;
-    const { offset, height, amplitude, frequency } = meta;
-    return ({ timeSinceStart }: FrameEventData) => {
-      this.z = height + Math.sin(timeSinceStart / 1000 * TWO_PI * frequency + (offset * TWO_PI)) * amplitude;
-    };
+  onBeforeRender(event: FrameEventData) {
+    super.onBeforeRender(event);
+    if (!this.hoverMeta) return;
+    const { timeSinceStart } = event;
+    const { offset, height, amplitude, frequency } = this.hoverMeta;
+    this.z = height + Math.sin(timeSinceStart / 1000 * TWO_PI * frequency + (offset * TWO_PI)) * amplitude;
   }
 }

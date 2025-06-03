@@ -13,6 +13,7 @@ const ZOOM_EASING_EPSILON = 0.005;
 
 export class Stage {
   protected readonly sprites: Sprite[] = [];
+  protected readonly chromeSprites: Sprite[] = [];
   protected width: number;
   protected height: number;
   protected readonly context: CanvasRenderingContext2D;
@@ -34,6 +35,7 @@ export class Stage {
 
   onPrepareFrame?: Listener<FrameEventData>;
   onBeforeRender?: Listener<FrameEventData>;
+  onBeforeRenderChrome?: Listener<FrameEventData>;
   onKeyDown?: Listener<KeyEventData>;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -65,16 +67,17 @@ export class Stage {
     }
     this.onBeforeRender?.(frameEvent);
     this.render();
+    this.onBeforeRenderChrome?.(frameEvent);
+    this.renderChrome();
     this.lastFrameTime = now;
     this.rafId = requestAnimationFrame(this.nextFrame);
   }
 
-  private spritesWithKeydown = new Set<Sprite>();
   private readonly onKeyDownPrivate = (e: KeyboardEvent) => {
     let preventDefault = false;
     const newEvent = convertKeyboardEvent(e);
-    for (const sprite of this.spritesWithKeydown) {
-      preventDefault = (sprite.onKeyDown!(newEvent) === false) || preventDefault;
+    for (const sprite of this.sprites) {
+      preventDefault = (sprite.onKeyDown(newEvent) === false) || preventDefault;
     }
     preventDefault = (this.onKeyDown?.(newEvent) === false) || preventDefault;
     if (preventDefault) {
@@ -101,14 +104,10 @@ export class Stage {
 
   addSprite(sprite: Sprite): void {
     insertSortedBy(this.sprites, sprite, getY);
-    if (sprite.onKeyDown) {
-      this.spritesWithKeydown.add(sprite);
-    }
   }
 
   removeSprite(sprite: Sprite): void {
     removeFromSortedArray(this.sprites, sprite, getY);
-    this.spritesWithKeydown.delete(sprite);
   }
 
   // positive number means it's to the outer side of that edge
@@ -150,7 +149,7 @@ export class Stage {
     }
   }
 
-  render(): void {
+  private render(): void {
     this.animate();
     const ctx = this.context;
     ctx.clearRect(0, 0, this.width, this.height);
@@ -169,7 +168,12 @@ export class Stage {
       sprite.draw(ctx);
     }
     ctx.restore();
+  }
 
-    this.drawChrome(ctx);
+  private renderChrome() {
+    const ctx = this.context;
+    for (const sprite of this.chromeSprites) {
+      sprite.draw(ctx);
+    }
   }
 }

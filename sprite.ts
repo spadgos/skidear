@@ -1,4 +1,4 @@
-import { Listener, KeyEventData, FrameEventData } from './events.js';
+import { KeyEventData, FrameEventData } from './events.js';
 import { AABB, intersects, nthItem, randomInt } from './lib.js';
 import { translate } from './canvas_lib.js';
 import { sortByYZ } from './array_lib.js';
@@ -20,8 +20,9 @@ export abstract class Sprite {
   private localHitbox: AABB | undefined;
   private globalHitboxCache: AABB | undefined;
 
-  onKeyDown: Listener<KeyEventData> | undefined;
-  onBeforeRender?: Listener<FrameEventData>;
+
+  onKeyDown(event: KeyEventData): boolean|void {}
+  onBeforeRender(event: FrameEventData): boolean|void {}
 
   setPos(x: number, y: number, z = 0): void {
     this.x = x;
@@ -78,7 +79,7 @@ export abstract class Sprite {
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
-    const {scale, width, height, rotation, children, debug} = this;
+    const { scale, width, height, rotation, children, debug } = this;
     const x = Math.round(this.x);
     const y = Math.round(this.y);
     const z = Math.round(this.z);
@@ -96,10 +97,10 @@ export abstract class Sprite {
       const [l, t, r, b] = this.getLocalHitbox();
       const shadowScale = 1 - (z ** 0.35) / 10;
       ctx.ellipse(
-        /* x */ (r + l) / 2,
-        /* y */ (b + t) / 2,
-        /* radiusX */ (r - l) / 2 * shadowScale,
-        /* radiusY */ (b - t) / 2 * shadowScale,
+        /* x */(r + l) / 2,
+        /* y */(b + t) / 2,
+        /* radiusX */(r - l) / 2 * shadowScale,
+        /* radiusY */(b - t) / 2 * shadowScale,
         /* rotation */ 0,
         /* startAngle */ 0,
         /* endAngle */ 2 * Math.PI
@@ -149,10 +150,21 @@ export abstract class Sprite {
 
 export type FramesMap = Map<string, [frameDimensions: AABB, hitbox?: AABB]>;
 
+export type AnimationMap = Map<string, Animation>;
+
+export interface Animation {
+  frames: string[]; // names of the frames
+  frameRate: number; // fps
+  repeat?: boolean; // default true
+}
+
 export class ImageSprite extends Sprite {
   private frames: FramesMap | undefined;
   private currentFrame: string = '';
   private image: CanvasImageSource | undefined;
+  private animations: Map<string, Animation> | undefined;
+  private currentAnimation: Animation | undefined;
+  private animationStartTime: number = 0;
 
   constructor(private imagePromise: CanvasImageSource | Promise<CanvasImageSource>) {
     super();
@@ -177,14 +189,32 @@ export class ImageSprite extends Sprite {
     }
   }
 
-  // addFrame(name: string, aabb: AABB): this {
-  //   this.frames ??= new Map();
-  //   this.frames.set(name, aabb);
-  //   if (!this.currentFrame) {
-  //     this.setCurrentFrame(name);
-  //   }
-  //   return this;
-  // }
+  setAnimations(animations: AnimationMap): void {
+    this.animations = animations;
+  }
+
+  startAnimation(animationName: string): void { // todo: starting frame?
+    if (!this.animations?.has(animationName)) {
+      throw new Error(`Unknown animation: ${animationName}`);
+    }
+    this.currentAnimation = this.animations.get(animationName);
+    this.animationStartTime = Date.now();
+  }
+
+  clearAnimation() {
+    this.currentAnimation = undefined;
+  }
+
+  override onBeforeRender(event: FrameEventData) {
+    if (!this.currentAnimation) return;
+    const {frameRate, frames, repeat = true} = this.currentAnimation;
+    const elapsedSeconds = (Date.now() - this.animationStartTime) / 1000;
+    const frameNumber = Math.floor(elapsedSeconds * frameRate);
+    const frameIndex = repeat
+      ? frameNumber % frames.length
+      : Math.min(frameNumber, frames.length - 1);
+    this.setCurrentFrame(frames[frameIndex]);
+  }
 
   pickRandomFrame(pickFromKeys?: string[]): void {
     if (!this.frames) return;
@@ -197,7 +227,7 @@ export class ImageSprite extends Sprite {
   }
 
   setCurrentFrame(name: string): void {
-    if (this.currentFrame === 'name') return;
+    if (this.currentFrame === name) return;
     const aabb = this.frames?.get(name);
     if (!aabb) throw new Error(`Unknown frame: ${name}`);
     const [[x1, y1, x2, y2], localHitbox] = aabb;
