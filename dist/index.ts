@@ -1,0 +1,324 @@
+import { Stage } from './stage.js';
+import { Skiier, MAX_SPEED, SkiierState } from './skiier.js';
+import { Obstacle } from './obstacles.js';
+import { clamp, randomInt, getY } from './lib.js';
+import { insertSortedBy } from './array_lib.js';
+import { Decoration } from './decoration.js';
+import { Robot, RobotState } from './robot.js';
+import { TextAlign, TextSprite } from './text_sprite.js';
+import { FrameEventData, KeyEventData } from './events.js';
+import { applyUserInputTo, getHighScoresWithPlaceholder, HighScore, isValidHighScore, setHighScores } from './high_scores.js';
+
+async function main() {
+  const canvas = document.createElement('canvas');
+  // canvas.width = 1280;
+  // canvas.height = 960;
+  canvas.width = window.innerWidth - 10;
+  canvas.height = window.innerHeight - 10;
+  document.body.appendChild(canvas);
+
+  async function newGame() {
+    const stage = new SkiDear(canvas, {
+      onRestart: () => {
+        stage.stop();
+        newGame();
+      }
+    });
+    await stage.init();
+    stage.start();
+  }
+  newGame();
+}
+
+const ROBOT_TRIGGER = {
+  // how far before the robot starts chasing
+  headstart: 200,
+  // how far behind it starts
+  offset: 100,
+}
+
+// 1 obstacle per X area. Lower = more dense
+const OBSTACLE_DENSITY = 30000;
+const fontFamily = 'Press Start 2P';
+
+const createTitleText = TextSprite.createFactory({
+  fontFamily,
+  fontSize: 48,
+  align: TextAlign.CENTER,
+  color: '#fb551c'
+});
+
+const createBodyText = TextSprite.createFactory({
+  fontFamily,
+  fontSize: 18,
+  color: '#000',
+});
+
+class SkiDear extends Stage {
+  skiier!: Skiier;
+  obstacles: Obstacle[] = [];
+  haveYouSeenThis!: Decoration;
+  scoreSprite!: TextSprite;
+  robot!: Robot;
+
+  private playing = true;
+
+  // Set to a value when entering your name for the high scores
+  private scoreInput: HighScore | undefined;
+  private highScores: HighScore[] | undefined;
+  private scoreInputSprite: TextSprite | undefined;
+
+  private targetObstacleCount = 0;
+  readonly onRestart: () => void;
+
+  constructor(canvas: HTMLCanvasElement, options: Pick<SkiDear, 'onRestart'>) {
+    super(canvas);
+    this.onRestart = options.onRestart;
+  }
+
+  async init(): Promise<void> {
+    this.setBackground('#ffffff');
+    const skiier = this.skiier = new Skiier({
+      onStateChange: (newState) => {
+        if (newState === SkiierState.CRASHED) {
+          this.beginGameOver(1000);
+        } else if (newState === SkiierState.EATEN) {
+          this.beginGameOver(3000); // wait for the robot animation
+        }
+      }
+    });
+    this.addSprite(skiier);
+
+    const robot = this.robot = new Robot({
+      skiier,
+      onSkiierCaught: () => {
+        robot.setState(RobotState.EATING);
+        skiier.setState(SkiierState.EATEN);
+      },
+    });
+
+    this.setViewport(0, this.skiier.y + this.height * 0.2);
+
+    const numObsts =
+      this.targetObstacleCount =
+      Math.round((this.width * this.height) / OBSTACLE_DENSITY);
+
+    // const top = this.getViewportEdge('top');
+    const right = this.getViewportEdge('right');
+    const bottom = this.getViewportEdge('bottom');
+    const left = this.getViewportEdge('left');
+    for (let i = 0; i <= Math.floor(numObsts / 2); ++i) {
+      const obst = new Obstacle();
+      // obst.setPos(randomInt(left, right), randomInt(top, bottom + 4 * this.height));
+      obst.setPos(randomInt(left, right), randomInt(50, bottom));
+      this.addSprite(obst);
+      insertSortedBy(this.obstacles, obst, getY);
+    }
+
+    const haveYouSeenThis = this.haveYouSeenThis = new Decoration('haveYouSeenThis');
+    haveYouSeenThis.setPos(randomInt(-500, 500), 1000, 50);
+    this.addSprite(haveYouSeenThis);
+
+    // const titleSprite = new Decoration('title');
+    // titleSprite.setPos(100, -100, 50);
+    // this.addSprite(titleSprite);
+
+    const titleText = createTitleText('LOBSTER CAR SKI FREE');
+    titleText.setPos(0, -50);
+    this.addSprite(titleText);
+
+    this.setupChromeSprites();
+    await this.loadFont();
+    this.playing = true;
+  }
+
+  private setupChromeSprites() {
+    const padding = 20;
+    const { width } = this;
+
+    const lobsterLogo = new Decoration('lobsterSki');
+    const lw = lobsterLogo.width * lobsterLogo.scale;
+    const lh = lobsterLogo.height * lobsterLogo.scale;
+    const lx = width - (lw / 2) - padding;
+    const ly = (lh / 2) + padding;
+    lobsterLogo.setPos(lx, ly);
+
+    const score = this.scoreSprite = createBodyText('', {
+      align: TextAlign.RIGHT,
+    });
+    score.setPos(width - padding, ly + lh / 2 + padding + 9 /* half fontSize */);
+
+    this.chromeSprites.push(
+      score,
+      lobsterLogo,
+    );
+  }
+
+  private beginGameOver(endScreenDelay: number) {
+    if (!this.playing) return;
+    this.playing = false;
+    this.setTimeout(() => {
+      let y = this.height / 2 - 100;
+      const x = this.width / 2;
+      {
+        const message = createTitleText('WELCOME TO YOUR 40s SAM\nTHIS IS WHAT ITS LIKE')
+        message.setPos(x, y);
+        this.chromeSprites.push(message);
+      }
+      {
+        const message = createBodyText('Press space to relive your wasted youth', { align: TextAlign.CENTER });
+        message.setPos(x, y += 100);
+        this.chromeSprites.push(message);
+      }
+      y += 50;
+      const { scores, yours } = getHighScoresWithPlaceholder(this.getScore());
+      this.highScores = scores;
+      this.scoreInput = yours;
+      for (let i = 0; i < scores.length; ++i) {
+        const isYours = scores[i] === yours;
+        const color = isYours ? '#fb551c' : '#000';
+        const text = createBodyText(
+          this.highScoreToText(scores[i]),
+          { align: TextAlign.CENTER, color }
+        );
+        text.setPos(x, y += 30);
+        this.chromeSprites.push(text);
+        if (isYours) {
+          this.scoreInputSprite = text;
+        }
+      }
+    }, endScreenDelay);
+  }
+
+  private highScoreToText(score: HighScore): string {
+    const isYours = score === this.scoreInput;
+    const prefix = isYours ? '> ' : '';
+    const suffix = isYours ? ' <' : '';
+    const name = isYours && score.name.length < 3 ? score.name + '_' : score.name;
+    return prefix + name.padEnd(4, ' ') + String(score.score).padStart(6, ' ') + suffix;
+  }
+
+  readonly onKeyDown = (event: KeyEventData) => {
+    if (this.scoreInput && this.highScores && this.scoreInputSprite) {
+      const highScore = this.scoreInput;
+      switch (event.key) {
+        case 'Enter':
+          // check it's 3 chars, etc
+          if (isValidHighScore(highScore)) {
+            setHighScores(this.highScores);
+            this.scoreInput = undefined;
+          }
+          break;
+        default:
+          applyUserInputTo(this.scoreInput, event.key);
+      }
+      this.scoreInputSprite.setText(this.highScoreToText(highScore));
+    } else if (
+        event.key === ' ' && (
+          this.skiier.state === SkiierState.CRASHED
+          || this.skiier.state === SkiierState.EATEN
+        )
+    ) {
+      this.onRestart();
+    }
+  };
+
+  readonly onBeforeRenderChrome = (event: FrameEventData): void => {
+    this.scoreSprite.setText(`Score: ${this.getScore()}`);
+  };
+
+  private async loadFont() {
+    try {
+      const font = await new FontFace(
+        'Press Start 2P',
+        'url(https://fonts.gstatic.com/s/pressstart2p/v15/e3t4euO8T-267oIAQAu6jDQyK3nVivNm4I81.woff2)'
+        // "url('https://fonts.googleapis.com/css2?family=Press+Start+2P')"
+      ).load();
+
+      document.fonts.add(font);
+    } catch { }
+  }
+
+  onPrepareFrame = () => {
+    const { skiier, robot } = this;
+    if (skiier.state === SkiierState.AIRBORNE) {
+      if (skiier.zSpeed < 0 && skiier.z <= 0) {
+        skiier.setState(SkiierState.SKIING);
+      }
+    }
+    if (!skiier.noClip) { // if noClip is true, then nothing will intersect
+      // Check for collisions. This is just O(N) for now, but could be improved
+      // since obstacles is sorted by Y position
+      for (const obst of this.obstacles) {
+        if (skiier.intersectsWith(obst)) {
+          skiier.onCollision(obst);
+          break; // I guess?
+        }
+      }
+    }
+    if (robot.state === RobotState.WAITING && this.getScore() > ROBOT_TRIGGER.headstart) {
+      this.addSprite(robot);
+      robot.setPos(
+        this.getViewportEdge('left') + 100,
+        // skiier.x - 300,
+        skiier.y + 200, //- ROBOT_TRIGGER.offset,
+      );
+      robot.setState(RobotState.RUNNING);
+    }
+  };
+
+  getScore(): number {
+    return Math.round(this.skiier.y / 100) * 10;
+  }
+
+  onBeforeRender = () => {
+    this.adjustViewport();
+    this.addObstacles();
+  };
+
+  private adjustViewport() {
+    const speedPct = (this.skiier.speed * Math.cos(this.skiier.angle)) / MAX_SPEED;
+    const lag = Math.cos(speedPct * Math.PI / 2) * -0.2
+      + (this.robot.state === RobotState.RUNNING ? 0.2 : 0.3);
+    // this.targetZoom = 1 - (speedPct * 0.5);
+    this.animateViewport(
+      clamp(-this.width, this.skiier.x / 1.5, this.width),
+      Math.max(this.viewportY, this.skiier.y + this.height * lag)
+    );
+  }
+
+  private addObstacles() {
+    let popped: Obstacle[] | undefined;
+    const bottom = this.getViewportEdge('bottom');
+    const left = this.getViewportEdge('left');
+    const buffer = 0.2;
+    const { width, height } = this;
+
+    if (this.distanceOutsideViewportEdge('top', this.haveYouSeenThis.y) > 50) {
+      this.haveYouSeenThis.setPos(
+        randomInt(left - width * buffer, left + width * (1 + buffer)),
+        randomInt(bottom + 50, bottom + height),
+      );
+    }
+
+    while (this.obstacles.length && this.distanceOutsideViewportEdge('top', this.obstacles[0].y) > 50) {
+      const obst = this.obstacles.shift()!;
+      popped ??= [];
+      popped.push(obst);
+      this.removeSprite(obst);
+    }
+    if (this.obstacles.length < this.targetObstacleCount) {
+      while (this.obstacles.length < this.targetObstacleCount) {
+        const tree = popped?.pop() ?? new Obstacle();
+        tree.setPos(
+          randomInt(left - width * buffer, left + width * (1 + buffer)),
+          randomInt(bottom + 50, bottom + height),
+        );
+        insertSortedBy(this.obstacles, tree, getY);
+        this.addSprite(tree);
+      }
+    }
+  }
+}
+
+main();
