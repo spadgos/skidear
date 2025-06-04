@@ -38,6 +38,8 @@ export class Stage {
   onBeforeRenderChrome?: Listener<FrameEventData>;
   onKeyDown?: Listener<KeyEventData>;
 
+  private readonly timeouts = new Set<number>();
+
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.context = canvas.getContext('2d')!;
     this.width = this.canvas.width;
@@ -54,6 +56,19 @@ export class Stage {
   stop() {
     document.body.removeEventListener('keydown', this.onKeyDownPrivate);
     cancelAnimationFrame(this.rafId);
+    for (const id of this.timeouts) {
+      window.clearTimeout(id);
+    }
+    this.timeouts.clear();
+  }
+
+  protected setTimeout(callback: () => void, delayMs: number): number {
+    const id = window.setTimeout(() => {
+      this.timeouts.delete(id);
+      callback();
+    }, delayMs);
+    this.timeouts.add(id);
+    return id;
   }
 
   private readonly nextFrame = () => {

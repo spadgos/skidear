@@ -1,6 +1,6 @@
 import { AnimationMap, FramesMap, ImageSprite } from './sprite.js';
 import { loadImage } from "./canvas_lib.js";
-import { Skiier, MAX_SPEED as SKIIER_MAX_SPEED } from './skiier.js';
+import { Skiier, MAX_SPEED as SKIIER_MAX_SPEED, SkiierState } from './skiier.js';
 import { FrameEventData } from './events.js';
 import { getAngleBetweenPoints, getDistance } from './lib.js';
 const SPRITE_SHEET = './images/ski-free-edit_2x8.png';
@@ -33,8 +33,8 @@ function* times(n: number, ...frames: string[]) {
 
 const animations: AnimationMap = new Map([
   ['running', {
-    frames: ['run-1', 'run-2', 'run-3', 'run-4'],
-    frameRate: 4,
+    frames: ['run-3', 'run-4'],
+    frameRate: 6,
     repeat: true
   }],
   ['eating', {
@@ -55,11 +55,15 @@ const RUNNING_SPEED = SKIIER_MAX_SPEED;
 export class Robot extends ImageSprite {
 
   state: RobotState = WAITING;
+  readonly skiier: Skiier;
+  readonly onSkiierCaught: () => void;
 
-  constructor(private readonly skiier: Skiier) {
+  constructor(options: Pick<Robot, 'skiier'|'onSkiierCaught'>) {
     super(loadImage(SPRITE_SHEET));
     this.setFrames(frames);
     this.setAnimations(animations);
+    this.skiier = options.skiier;
+    this.onSkiierCaught = options.onSkiierCaught;
   }
 
   setState(state: RobotState): void {
@@ -84,12 +88,17 @@ export class Robot extends ImageSprite {
     const secondsElapsed = frameDelta / 1000;
     if (this.state !== RUNNING) return;
     const {x, y, skiier} = this;
-    const angle = getAngleBetweenPoints(this, skiier);
     const distance = getDistance(this, skiier);
+    if (skiier.state === SkiierState.CRASHED && distance < 100) {
+      this.clearAnimation();
+      this.setCurrentFrame('run-2');
+      return;
+    }
+    const angle = getAngleBetweenPoints(this, skiier);
     let amount = RUNNING_SPEED * secondsElapsed * (distance < 100 ? 0.9 : 1);
     if (amount > distance) {
       amount = distance;
-      this.setState(EATING);
+      this.onSkiierCaught();
     }
     this.setPos(
       x + Math.cos(angle) * amount,

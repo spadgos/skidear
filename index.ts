@@ -6,28 +6,52 @@ import { insertSortedBy } from './array_lib.js';
 import { Decoration } from './decoration.js';
 import { Robot, RobotState } from './robot.js';
 import { TextAlign, TextSprite } from './text_sprite.js';
-import { FrameEventData } from './events.js';
+import { FrameEventData, KeyEventData } from './events.js';
 
 async function main() {
   const canvas = document.createElement('canvas');
-  canvas.width = 1280;
-  canvas.height = 960;
+  // canvas.width = 1280;
+  // canvas.height = 960;
+  canvas.width = window.innerWidth - 10;
+  canvas.height = window.innerHeight - 10;
   document.body.appendChild(canvas);
-  const stage = new SkiDear(canvas);
-  await stage.init();
 
-  stage.start();
-  Object.assign(window, { stage, skiier: stage.skiier });
+  async function newGame() {
+    const stage = new SkiDear(canvas, {
+      onRestart: () => {
+        stage.stop();
+        newGame();
+      }
+    });
+    await stage.init();
+    stage.start();
+  }
+  newGame();
 }
 
 const ROBOT_TRIGGER = {
+  // how far before the robot starts chasing
   headstart: 200,
-  offset: 200,
+  // how far behind it starts
+  offset: 100,
 }
 
 // 1 obstacle per X area. Lower = more dense
 const OBSTACLE_DENSITY = 30000;
 const fontFamily = 'Press Start 2P';
+
+const createTitleText = TextSprite.createFactory({
+  fontFamily,
+  fontSize: 48,
+  align: TextAlign.CENTER,
+  color: '#fb551c'
+});
+
+const createBodyText = TextSprite.createFactory({
+  fontFamily,
+  fontSize: 18,
+  color: '#000',
+});
 
 class SkiDear extends Stage {
   skiier!: Skiier;
@@ -36,17 +60,36 @@ class SkiDear extends Stage {
   scoreSprite!: TextSprite;
   robot!: Robot;
 
+  private playing = true;
+
   private targetObstacleCount = 0;
+  readonly onRestart: () => void;
+
+  constructor(canvas: HTMLCanvasElement, options: Pick<SkiDear, 'onRestart'>) {
+    super(canvas);
+    this.onRestart = options.onRestart;
+  }
 
   async init(): Promise<void> {
     this.setBackground('#ffffff');
-    const skiier = this.skiier = new Skiier();
-    // skiier.debug = true;
+    const skiier = this.skiier = new Skiier({
+      onStateChange: (newState) => {
+        if (newState === SkiierState.CRASHED) {
+          this.beginGameOver(1000);
+        } else if (newState === SkiierState.EATEN) {
+          this.beginGameOver(3000); // wait for the robot animation
+        }
+      }
+    });
     this.addSprite(skiier);
 
-    const robot = this.robot = new Robot(skiier);
-    robot.setPos(150, -50);
-    this.addSprite(robot);
+    const robot = this.robot = new Robot({
+      skiier,
+      onSkiierCaught: () => {
+        robot.setState(RobotState.EATING);
+        skiier.setState(SkiierState.EATEN);
+      },
+    });
 
     this.setViewport(0, this.skiier.y + this.height * 0.2);
 
@@ -67,30 +110,25 @@ class SkiDear extends Stage {
     }
 
     const haveYouSeenThis = this.haveYouSeenThis = new Decoration('haveYouSeenThis');
-    haveYouSeenThis.setPos(-100, -100, 50);
+    haveYouSeenThis.setPos(randomInt(-500, 500), 1000, 50);
     this.addSprite(haveYouSeenThis);
 
-    const titleSprite = new Decoration('title');
-    titleSprite.setPos(100, -100, 50);
-    this.addSprite(titleSprite);
+    // const titleSprite = new Decoration('title');
+    // titleSprite.setPos(100, -100, 50);
+    // this.addSprite(titleSprite);
 
-    const titleText = new TextSprite({
-      text: 'LOBSTER CAR SKI FREE',
-      fontFamily,
-      fontSize: 48,
-      align: TextAlign.CENTER,
-      color: '#fb551c'
-    });
+    const titleText = createTitleText('LOBSTER CAR SKI FREE');
     titleText.setPos(0, -50);
     this.addSprite(titleText);
 
     this.setupChromeSprites();
     await this.loadFont();
+    this.playing = true;
   }
 
   private setupChromeSprites() {
     const padding = 20;
-    const {width} = this;
+    const { width } = this;
 
     const lobsterLogo = new Decoration('lobsterSki');
     const lw = lobsterLogo.width * lobsterLogo.scale;
@@ -99,10 +137,7 @@ class SkiDear extends Stage {
     const ly = (lh / 2) + padding;
     lobsterLogo.setPos(lx, ly);
 
-    const score = this.scoreSprite = new TextSprite({
-      fontFamily,
-      fontSize: 18,
-      color: '#000',
+    const score = this.scoreSprite = createBodyText('', {
       align: TextAlign.RIGHT,
     });
     score.setPos(width - padding, ly + lh / 2 + padding + 9 /* half fontSize */);
@@ -113,8 +148,31 @@ class SkiDear extends Stage {
     );
   }
 
+  private beginGameOver(endScreenDelay: number) {
+    if (!this.playing) return;
+    this.playing = false;
+    this.setTimeout(() => {
+      {
+        const message = createTitleText('WELCOME TO YOUR 40s SAM\nTHIS IS WHAT ITS LIKE')
+        message.setPos(this.width / 2, this.height / 2 - 100);
+        this.chromeSprites.push(message);
+      }
+      {
+        const message = createBodyText('Press space to relive your wasted youth', {align: TextAlign.CENTER});
+        message.setPos(this.width / 2, this.height / 2);
+        this.chromeSprites.push(message);
+      }
+    }, endScreenDelay);
+  }
+
+  readonly onKeyDown = (event: KeyEventData) => {
+    if (event.key === ' ' && (this.skiier.state === SkiierState.CRASHED || this.skiier.state === SkiierState.EATEN)) {
+      this.onRestart();
+    }
+  };
+
   readonly onBeforeRenderChrome = (event: FrameEventData): void => {
-    this.scoreSprite.text = `Score: ${this.getScore()}`;
+    this.scoreSprite.setText(`Score: ${this.getScore()}`);
   };
 
   private async loadFont() {
@@ -126,11 +184,11 @@ class SkiDear extends Stage {
       ).load();
 
       document.fonts.add(font);
-    } catch {}
+    } catch { }
   }
 
   onPrepareFrame = () => {
-    const { skiier } = this;
+    const { skiier, robot } = this;
     if (skiier.state === SkiierState.AIRBORNE) {
       if (skiier.zSpeed < 0 && skiier.z <= 0) {
         skiier.setState(SkiierState.SKIING);
@@ -146,14 +204,14 @@ class SkiDear extends Stage {
         }
       }
     }
-    if (this.robot.state === RobotState.WAITING && this.getScore() > ROBOT_TRIGGER.headstart) {
-      console.log('GO ROBOT');
-      this.robot.setPos(
-        skiier.x,
-        skiier.y - ROBOT_TRIGGER.offset,
+    if (robot.state === RobotState.WAITING && this.getScore() > ROBOT_TRIGGER.headstart) {
+      this.addSprite(robot);
+      robot.setPos(
+        this.getViewportEdge('left') + 100,
+        // skiier.x - 300,
+        skiier.y + 200, //- ROBOT_TRIGGER.offset,
       );
-
-      this.robot.setState(RobotState.RUNNING);
+      robot.setState(RobotState.RUNNING);
     }
   };
 
@@ -169,7 +227,7 @@ class SkiDear extends Stage {
   private adjustViewport() {
     const speedPct = (this.skiier.speed * Math.cos(this.skiier.angle)) / MAX_SPEED;
     const lag = Math.cos(speedPct * Math.PI / 2) * -0.2
-              + (this.robot.state === RobotState.RUNNING ? 0.2 : 0.3);
+      + (this.robot.state === RobotState.RUNNING ? 0.2 : 0.3);
     // this.targetZoom = 1 - (speedPct * 0.5);
     this.animateViewport(
       clamp(-this.width, this.skiier.x / 1.5, this.width),
@@ -212,3 +270,5 @@ class SkiDear extends Stage {
 }
 
 main();
+
+

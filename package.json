@@ -6,7 +6,7 @@
     "prestart": "npm run build",
     "start": "python3 -m http.server 8080 --directory dist",
     "watch:build": "nodemon --exec 'npm run build || exit 1'",
-    "build": "mkdir -p dist/mark && cp -ur *.html *.css *.ts images dist && tsc && touch dist/mark/timestamp.txt",
+    "build": "mkdir -p dist/mark && cp -ur *.html *.ts images dist && tsc && touch dist/mark/timestamp.txt",
     "livereloadoriginal": "livereload -t dist/mark dist",
     "livereload": "livereload"
   },

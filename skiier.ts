@@ -18,6 +18,7 @@ export enum SkiierState {
   SKIING,
   CRASHED,
   AIRBORNE,
+  EATEN,
 }
 
 const frames: FramesMap = new Map([
@@ -28,8 +29,9 @@ const frames: FramesMap = new Map([
   ['slight-right', [[265, 115, 360, 205], [40, 25, 0, 35]]],
   ['hard-right', [[123, 115, 240, 205], [0, 12.5, 52.5, 21]]],
   ['right', [[2, 115, 120, 205], [-40, 26.5, 55, 31.5]]],
-  ['air', [[415, 90, 500, 195], [-25, 35, 25, 40]]],
+  ['air', [[415, 90, 500, 195], [-30, 15, 30, 40]]],
   ['crashed', [[860, 115, 925, 205], [-8, 5, 8, 8.5]]],
+  ['eaten', [[0, 0, 1, 1]]],
 ]);
 const turningFrames: readonly string[] = [
   'left',
@@ -56,9 +58,11 @@ export class Skiier extends ImageSprite {
   private targetAngle = this.angle;
 
   state: SkiierState = SkiierState.SKIING;
+  readonly onStateChange: (newState: SkiierState) => void;
 
-  constructor() {
+  constructor(options: Pick<Skiier, 'onStateChange'>) {
     super(loadImage(SPRITE_SHEET));
+    this.onStateChange = options.onStateChange;
     this.setFrames(frames);
     // this.debug = true;
     // this.scale = 0.25;
@@ -82,10 +86,11 @@ export class Skiier extends ImageSprite {
     if (this.state === state) return;
     const old = this.state;
     this.state = state;
+    this.onStateChangeInner(state);
     this.onStateChange(state);
   }
 
-  private onStateChange(newState: SkiierState) {
+  private onStateChangeInner(newState: SkiierState) {
     switch (newState) {
       case SkiierState.AIRBORNE:
         this.speed *= Math.cos(this.angle);
@@ -100,6 +105,11 @@ export class Skiier extends ImageSprite {
         this.noClip = true;
         this.speed = this.zSpeed = 0;
         this.angle = this.targetAngle = MIN_ANGLE;
+        this.setCurrentFrame('crashed');
+        break;
+      case SkiierState.EATEN:
+        this.noClip = true;
+        this.setCurrentFrame('eaten');
         break;
     }
     // todo
@@ -118,6 +128,8 @@ export class Skiier extends ImageSprite {
         return this.keyActionsCrashed(key);
       case SkiierState.AIRBORNE:
         return this.keyActionsAirborne(key);
+      case SkiierState.EATEN:
+        return this.keyActionsEaten(key);
     }
   };
 
@@ -161,15 +173,24 @@ export class Skiier extends ImageSprite {
     }
   }
 
+  private keyActionsEaten(key: string) {
+    switch (key) {
+      case 'ArrowRight':
+      case 'ArrowLeft':
+      case 'ArrowDown':
+        return false;
+    }
+  }
+
   override onBeforeRender(event: FrameEventData) {
     super.onBeforeRender(event);
-    if (this.state === SkiierState.CRASHED) {
-      this.setCurrentFrame('crashed');
+    const { x, y, z, state } = this;
+    if (state === SkiierState.CRASHED || state === SkiierState.EATEN) {
       return;
     }
     const { frameDelta } = event;
     const secondsElapsed = frameDelta / 1000;
-    const { x, y, z, state } = this;
+
 
     const turnSpeedLimit = MAX_TURN_SPEED * secondsElapsed;
     const angle =
