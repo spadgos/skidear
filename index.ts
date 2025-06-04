@@ -7,6 +7,7 @@ import { Decoration } from './decoration.js';
 import { Robot, RobotState } from './robot.js';
 import { TextAlign, TextSprite } from './text_sprite.js';
 import { FrameEventData, KeyEventData } from './events.js';
+import { applyUserInputTo, getHighScoresWithPlaceholder, HighScore, isValidHighScore, setHighScores } from './high_scores.js';
 
 async function main() {
   const canvas = document.createElement('canvas');
@@ -61,6 +62,11 @@ class SkiDear extends Stage {
   robot!: Robot;
 
   private playing = true;
+
+  // Set to a value when entering your name for the high scores
+  private scoreInput: HighScore | undefined;
+  private highScores: HighScore[] | undefined;
+  private scoreInputSprite: TextSprite | undefined;
 
   private targetObstacleCount = 0;
   readonly onRestart: () => void;
@@ -152,21 +158,67 @@ class SkiDear extends Stage {
     if (!this.playing) return;
     this.playing = false;
     this.setTimeout(() => {
+      let y = this.height / 2 - 100;
+      const x = this.width / 2;
       {
         const message = createTitleText('WELCOME TO YOUR 40s SAM\nTHIS IS WHAT ITS LIKE')
-        message.setPos(this.width / 2, this.height / 2 - 100);
+        message.setPos(x, y);
         this.chromeSprites.push(message);
       }
       {
-        const message = createBodyText('Press space to relive your wasted youth', {align: TextAlign.CENTER});
-        message.setPos(this.width / 2, this.height / 2);
+        const message = createBodyText('Press space to relive your wasted youth', { align: TextAlign.CENTER });
+        message.setPos(x, y += 100);
         this.chromeSprites.push(message);
+      }
+      y += 50;
+      const { scores, yours } = getHighScoresWithPlaceholder(this.getScore());
+      this.highScores = scores;
+      this.scoreInput = yours;
+      for (let i = 0; i < scores.length; ++i) {
+        const isYours = scores[i] === yours;
+        const color = isYours ? '#fb551c' : '#000';
+        const text = createBodyText(
+          this.highScoreToText(scores[i]),
+          { align: TextAlign.CENTER, color }
+        );
+        text.setPos(x, y += 30);
+        this.chromeSprites.push(text);
+        if (isYours) {
+          this.scoreInputSprite = text;
+        }
       }
     }, endScreenDelay);
   }
 
+  private highScoreToText(score: HighScore): string {
+    const isYours = score === this.scoreInput;
+    const prefix = isYours ? '> ' : '';
+    const suffix = isYours ? ' <' : '';
+    const name = isYours && score.name.length < 3 ? score.name + '_' : score.name;
+    return prefix + name.padEnd(4, ' ') + String(score.score).padStart(6, ' ') + suffix;
+  }
+
   readonly onKeyDown = (event: KeyEventData) => {
-    if (event.key === ' ' && (this.skiier.state === SkiierState.CRASHED || this.skiier.state === SkiierState.EATEN)) {
+    if (this.scoreInput && this.highScores && this.scoreInputSprite) {
+      const highScore = this.scoreInput;
+      switch (event.key) {
+        case 'Enter':
+          // check it's 3 chars, etc
+          if (isValidHighScore(highScore)) {
+            setHighScores(this.highScores);
+            this.scoreInput = undefined;
+          }
+          break;
+        default:
+          applyUserInputTo(this.scoreInput, event.key);
+      }
+      this.scoreInputSprite.setText(this.highScoreToText(highScore));
+    } else if (
+        event.key === ' ' && (
+          this.skiier.state === SkiierState.CRASHED
+          || this.skiier.state === SkiierState.EATEN
+        )
+    ) {
       this.onRestart();
     }
   };
@@ -270,5 +322,3 @@ class SkiDear extends Stage {
 }
 
 main();
-
-
