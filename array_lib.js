@@ -1,6 +1,6 @@
 function sortedInsertPosition(arr, item, fn) {
     const val = fn(item);
-    // some shortcuts
+    // some shortcust
     if (arr.length === 0 || val <= fn(arr[0])) {
         return 0;
     }
