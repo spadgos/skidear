@@ -9,7 +9,7 @@ const ACCELERATION = 0.015; // 0.02; // 0-1
 const DECELERATION = 0.05;
 const TURN_SPEED = 0.2; // 0-1
 const MAX_TURN_SPEED = Math.PI; // radians/sec
-const SPRITE_SHEET = './images/ski-free-edit_2x8.png';
+const SPRITE_SHEET = './images/ski-free-edit_2x9.png';
 // When hitting a jump, the z speed will be set according to this angle and the current speed
 const RAMP_ANGLE = Math.PI / 18; // 15 deg
 const GRAVITY = 98; // m/s/s
@@ -24,9 +24,9 @@ export enum SkiierState {
 const frames: FramesMap = new Map([
   ['left', [[120, 115, 2, 205], [-55, 12.5, 40, 18.5]]],
   ['hard-left', [[240, 115, 123, 205], [-52.5, 12.5, 0, 21]]],
-  ['slight-left', [[360, 115, 265, 205], [-40, 25, 0, 35]]],
+  ['slight-left', [[360, 115, 265, 205], [-45, 25, 10, 35]]],
   ['straight', [[360, 100, 415, 205], [-25, 35, 25, 40]]],
-  ['slight-right', [[265, 115, 360, 205], [40, 25, 0, 35]]],
+  ['slight-right', [[265, 115, 360, 205], [-10, 25, 45, 35]]],
   ['hard-right', [[123, 115, 240, 205], [0, 12.5, 52.5, 21]]],
   ['right', [[2, 115, 120, 205], [-40, 26.5, 55, 31.5]]],
   ['air', [[415, 90, 500, 195], [-30, 15, 30, 40]]],

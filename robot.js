@@ -2,7 +2,7 @@ import { ImageSprite } from './sprite.js';
 import { loadImage } from "./canvas_lib.js";
 import { MAX_SPEED as SKIIER_MAX_SPEED, SkiierState } from './skiier.js';
 import { getAngleBetweenPoints, getDistance } from './lib.js';
-const SPRITE_SHEET = './images/ski-free-edit_2x8.png';
+const SPRITE_SHEET = './images/ski-free-edit_2x9.png';
 const frames = new Map([
     ['run-1', [[16, 320, 90, 414]]],
     ['run-2', [[91, 320, 150, 414]]],
@@ -43,7 +43,12 @@ const animations = new Map([
             ],
             frameRate: 8,
             repeat: false,
-        }]
+        }],
+    ['celebrating', {
+            frames: ['run-1', 'run-2'],
+            frameRate: 6,
+            repeat: true,
+        }],
 ]);
 const RUNNING_SPEED = SKIIER_MAX_SPEED;
 export class Robot extends ImageSprite {
@@ -82,8 +87,7 @@ export class Robot extends ImageSprite {
         const { x, y, skiier } = this;
         const distance = getDistance(this, skiier);
         if (skiier.state === SkiierState.CRASHED && distance < 100) {
-            this.clearAnimation();
-            this.setCurrentFrame('run-2');
+            this.startAnimation('celebrating');
             return;
         }
         const angle = getAngleBetweenPoints(this, skiier);
@@ -93,6 +97,7 @@ export class Robot extends ImageSprite {
             this.onSkiierCaught();
         }
         this.setPos(x + Math.cos(angle) * amount, y + Math.sin(angle) * amount);
+        this.flip = skiier.x < x;
     }
 }
 //# sourceMappingURL=robot.js.map

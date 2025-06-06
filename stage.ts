@@ -35,6 +35,7 @@ export class Stage {
 
   onPrepareFrame?: Listener<FrameEventData>;
   onBeforeRender?: Listener<FrameEventData>;
+  adjustContextBeforeChrome?: (ctx: CanvasRenderingContext2D, event: FrameEventData) => void;
   onBeforeRenderChrome?: Listener<FrameEventData>;
   onKeyDown?: Listener<KeyEventData>;
 
@@ -83,7 +84,14 @@ export class Stage {
     this.onBeforeRender?.(frameEvent);
     this.render();
     this.onBeforeRenderChrome?.(frameEvent);
+    if (this.adjustContextBeforeChrome != null) {
+      this.context.save();
+      this.adjustContextBeforeChrome(this.context, frameEvent);
+    }
     this.renderChrome();
+    if (this.adjustContextBeforeChrome != null) {
+      this.context.restore();
+    }
     this.lastFrameTime = now;
     this.rafId = requestAnimationFrame(this.nextFrame);
   }

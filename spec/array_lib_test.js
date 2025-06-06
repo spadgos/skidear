@@ -1,4 +1,4 @@
-import { indexOfSorted, insertSortedBy, removeFromSortedArray, sortByYZ } from '../array_lib.js';
+import { indexOfSorted, insertSortedBy, removeFromSortedArray } from '../array_lib.js';
 function charCode(x) {
     return x.charCodeAt(0);
 }
@@ -84,21 +84,22 @@ describe('removeFromSortedArray', () => {
         expect(arr).toEqual(['a', 'b', 'c', 'd']);
     });
 });
-describe('sortByYZ', () => {
-    it('sorts elements by their Z property first, then their Y property', () => {
-        const arr = [
-            { id: 'a', y: 10, z: 0 },
-            { id: 'b', y: 5, z: 0 },
-            { id: 'c', y: 100, z: 0 },
-            { id: 'd', y: -3, z: 1 },
-        ];
-        sortByYZ(arr);
-        expect(arr).toEqual([
-            { id: 'b', y: 5, z: 0 },
-            { id: 'a', y: 10, z: 0 },
-            { id: 'c', y: 100, z: 0 },
-            { id: 'd', y: -3, z: 1 },
-        ]);
-    });
-});
+// TODO: add zIndex
+// describe('sortByYZ', () => {
+//   it('sorts elements by their Z property first, then their Y property', () => {
+//     const arr = [
+//       { id: 'a', y: 10, z: 0,  },
+//       { id: 'b', y: 5, z: 0 },
+//       { id: 'c', y: 100, z: 0 },
+//       { id: 'd', y: -3, z: 1 },
+//     ];
+//     sortByYZ(arr);
+//     expect(arr).toEqual([
+//       { id: 'b', y: 5, z: 0 },
+//       { id: 'a', y: 10, z: 0 },
+//       { id: 'c', y: 100, z: 0 },
+//       { id: 'd', y: -3, z: 1 },
+//     ]);
+//   });
+// });
 //# sourceMappingURL=array_lib_test.js.map

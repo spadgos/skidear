@@ -1,7 +1,7 @@
 import { Stage } from './stage.js';
 import { Skiier, MAX_SPEED, SkiierState } from './skiier.js';
 import { Obstacle } from './obstacles.js';
-import { clamp, randomInt, getY } from './lib.js';
+import { clamp, randomInt, getY, getDistance } from './lib.js';
 import { insertSortedBy } from './array_lib.js';
 import { Decoration } from './decoration.js';
 import { Robot, RobotState } from './robot.js';
@@ -30,7 +30,7 @@ const ROBOT_TRIGGER = {
     // how far before the robot starts chasing
     headstart: 200,
     // how far behind it starts
-    offset: 100,
+    offset: 200,
 };
 // 1 obstacle per X area. Lower = more dense
 const OBSTACLE_DENSITY = 30000;
@@ -86,14 +86,15 @@ class SkiDear extends Stage {
         this.setViewport(0, this.skiier.y + this.height * 0.2);
         const numObsts = this.targetObstacleCount =
             Math.round((this.width * this.height) / OBSTACLE_DENSITY);
-        // const top = this.getViewportEdge('top');
-        const right = this.getViewportEdge('right');
-        const bottom = this.getViewportEdge('bottom');
-        const left = this.getViewportEdge('left');
+        const top = this.getViewportEdge('top');
+        const right = Math.ceil(this.getViewportEdge('right'));
+        const bottom = Math.ceil(this.getViewportEdge('bottom'));
+        const left = Math.floor(this.getViewportEdge('left'));
+        const obstaclesArea = [left, 50, right, bottom];
         for (let i = 0; i <= Math.floor(numObsts / 2); ++i) {
             const obst = new Obstacle();
-            // obst.setPos(randomInt(left, right), randomInt(top, bottom + 4 * this.height));
-            obst.setPos(randomInt(left, right), randomInt(50, bottom));
+            const pos = this.pickRandomlyInAreaButNotCloseToOtherObstacles(obstaclesArea);
+            obst.setPos(pos.x, pos.y);
             this.addSprite(obst);
             insertSortedBy(this.obstacles, obst, getY);
         }
@@ -104,8 +105,16 @@ class SkiDear extends Stage {
         // titleSprite.setPos(100, -100, 50);
         // this.addSprite(titleSprite);
         const titleText = createTitleText('LOBSTER CAR SKI FREE');
-        titleText.setPos(0, -50);
+        titleText.setPos(0, top + 180);
         this.addSprite(titleText);
+        const instructions = createBodyText('Arrow keys to steer\n'
+            + 'Watch out for the robot\n'
+            + 'Use the jumps to get away quicker!', { align: TextAlign.CENTER });
+        instructions.setPos(0, top + 210);
+        this.addSprite(instructions);
+        const hbs = createBodyText('Happy Birthday Sam!!', { align: TextAlign.CENTER, color: '#fb551c', fontSize: 24 });
+        hbs.setPos(0, top + 290);
+        this.addSprite(hbs);
         this.setupChromeSprites();
         await this.loadFont();
         this.playing = true;
@@ -133,7 +142,7 @@ class SkiDear extends Stage {
             let y = this.height / 2 - 100;
             const x = this.width / 2;
             {
-                const message = createTitleText('WELCOME TO YOUR 40s SAM\nTHIS IS WHAT ITS LIKE');
+                const message = createTitleText('WELCOME TO YOUR 40s SAM\nTHIS IS WHAT IT\'S LIKE');
                 message.setPos(x, y);
                 this.chromeSprites.push(message);
             }
@@ -186,8 +195,19 @@ class SkiDear extends Stage {
             this.onRestart();
         }
     };
-    onBeforeRenderChrome = (event) => {
-        this.scoreSprite.setText(`Score: ${this.getScore()}`);
+    onBeforeRenderChrome = () => {
+        if (this.playing) {
+            this.scoreSprite.setText(`Score: ${this.getScore()}`);
+        }
+    };
+    adjustContextBeforeChrome = (ctx, { timeSinceStart }) => {
+        if (this.playing)
+            return;
+        ctx.translate(this.width / 2, this.height / 2);
+        ctx.rotate(Math.sin(timeSinceStart / 2000) * Math.PI / 60);
+        const scale = Math.sin(timeSinceStart / 1500) * 0.05 + 1;
+        ctx.scale(scale, scale);
+        ctx.translate(-this.width / 2, -this.height / 2);
     };
     async loadFont() {
         try {
@@ -217,9 +237,7 @@ class SkiDear extends Stage {
         }
         if (robot.state === RobotState.WAITING && this.getScore() > ROBOT_TRIGGER.headstart) {
             this.addSprite(robot);
-            robot.setPos(this.getViewportEdge('left') + 100, 
-            // skiier.x - 300,
-            skiier.y + 200);
+            robot.setPos(this.getViewportEdge('left'), skiier.y - ROBOT_TRIGGER.offset);
             robot.setState(RobotState.RUNNING);
         }
     };
@@ -232,8 +250,7 @@ class SkiDear extends Stage {
     };
     adjustViewport() {
         const speedPct = (this.skiier.speed * Math.cos(this.skiier.angle)) / MAX_SPEED;
-        const lag = Math.cos(speedPct * Math.PI / 2) * -0.2
-            + (this.robot.state === RobotState.RUNNING ? 0.2 : 0.3);
+        const lag = Math.cos(speedPct * Math.PI / 2) * -0.2 + 0.2;
         // this.targetZoom = 1 - (speedPct * 0.5);
         this.animateViewport(clamp(-this.width, this.skiier.x / 1.5, this.width), Math.max(this.viewportY, this.skiier.y + this.height * lag));
     }
@@ -253,14 +270,44 @@ class SkiDear extends Stage {
             this.removeSprite(obst);
         }
         if (this.obstacles.length < this.targetObstacleCount) {
+            const area = [
+                Math.floor(left - width * buffer),
+                Math.floor(bottom + 50),
+                Math.ceil(left + width * (1 + buffer)),
+                Math.ceil(bottom + height),
+            ];
             while (this.obstacles.length < this.targetObstacleCount) {
                 const tree = popped?.pop() ?? new Obstacle();
-                tree.setPos(randomInt(left - width * buffer, left + width * (1 + buffer)), randomInt(bottom + 50, bottom + height));
+                const pos = this.pickRandomlyInAreaButNotCloseToOtherObstacles(area);
+                tree.setPos(pos.x, pos.y);
                 insertSortedBy(this.obstacles, tree, getY);
                 this.addSprite(tree);
             }
         }
     }
+    pickRandomlyInAreaButNotCloseToOtherObstacles(area) {
+        const MIN_DISTANCE = 50;
+        let remainingAttempts = 15;
+        let tryAgain;
+        let candidate;
+        do {
+            tryAgain = false;
+            candidate = randomCoordsInBox(area);
+            for (let i = 0; i < this.obstacles.length; ++i) {
+                if (getDistance(candidate, this.obstacles[i]) < MIN_DISTANCE) {
+                    tryAgain = true;
+                    break;
+                }
+            }
+        } while (tryAgain && --remainingAttempts);
+        if (remainingAttempts === 0) {
+            console.log("COULDN'T FIND ROOM");
+        }
+        return candidate;
+    }
+}
+function randomCoordsInBox([x1, y1, x2, y2]) {
+    return { x: randomInt(x1, x2), y: randomInt(y1, y2) };
 }
 main();
 //# sourceMappingURL=index.js.map

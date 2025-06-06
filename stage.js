@@ -26,6 +26,7 @@ export class Stage {
     lastFrameTime = 0;
     onPrepareFrame;
     onBeforeRender;
+    adjustContextBeforeChrome;
     onBeforeRenderChrome;
     onKeyDown;
     timeouts = new Set();
@@ -69,7 +70,14 @@ export class Stage {
         this.onBeforeRender?.(frameEvent);
         this.render();
         this.onBeforeRenderChrome?.(frameEvent);
+        if (this.adjustContextBeforeChrome != null) {
+            this.context.save();
+            this.adjustContextBeforeChrome(this.context, frameEvent);
+        }
         this.renderChrome();
+        if (this.adjustContextBeforeChrome != null) {
+            this.context.restore();
+        }
         this.lastFrameTime = now;
         this.rafId = requestAnimationFrame(this.nextFrame);
     };

@@ -1,6 +1,6 @@
 function sortedInsertPosition(arr, item, fn) {
     const val = fn(item);
-    // some shortcust
+    // some shortcuts
     if (arr.length === 0 || val <= fn(arr[0])) {
         return 0;
     }
@@ -76,5 +76,7 @@ export function removeFromSortedArray(arr, item, fn) {
 export function sortByYZ(items) {
     items.sort(sortByYComparator);
 }
-const sortByYComparator = ({ y: ay, z: az }, { y: by, z: bz }) => az - bz || ay - by;
+const sortByYComparator = ({ y: ay, z: az, zIndex: azi }, { y: by, z: bz, zIndex: bzi }) => {
+    return azi - bzi || az - bz || ay - by;
+};
 //# sourceMappingURL=array_lib.js.map
