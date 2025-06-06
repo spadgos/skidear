@@ -1,9 +1,9 @@
 import { loadImage } from './canvas_lib.js';
-import { FrameEventData, Listener } from './events.js';
+import { FrameEventData } from './events.js';
 import { AABB, SkiierImpact } from './lib.js';
 import { FramesMap, ImageSprite } from './sprite.js';
 
-const SPRITE_SHEET = './images/ski-free-edit_2x8.png';
+const SPRITE_SHEET = './images/ski-free-edit_2x9.png';
 const TWO_PI = 2 * Math.PI;
 
 interface HoverMeta {

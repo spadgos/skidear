@@ -70,8 +70,12 @@ export function removeFromSortedArray<T>(arr: T[], item: T, fn: (item: T) => num
   return arr;
 }
 
-export function sortByYZ<T extends HasYZ>(items: T[]): void {
+type Spriteish = HasYZ & {zIndex: number};
+
+export function sortByYZ<T extends Spriteish>(items: T[]): void {
   items.sort(sortByYComparator);
 }
-const sortByYComparator = ({ y: ay, z: az }: HasYZ, { y: by, z: bz }: HasYZ) => az - bz || ay - by;
+const sortByYComparator = ({ y: ay, z: az, zIndex: azi }: Spriteish, { y: by, z: bz, zIndex: bzi }: Spriteish) => {
+  return azi - bzi || az - bz || ay - by;
+};
 

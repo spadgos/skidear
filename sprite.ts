@@ -7,10 +7,12 @@ export abstract class Sprite {
   x = 0;
   y = 0;
   z = 0;
+  zIndex = 0;  // Used to override the Y-based sorting for elements. Negative numbers go behind.
   rotation = 0; // radians
   scale = 1;
   width = 2;
   height = 2;
+  flip = false;
   private children: Sprite[] | undefined;
   debug = false;
 
@@ -194,10 +196,12 @@ export class ImageSprite extends Sprite {
   }
 
   startAnimation(animationName: string): void { // todo: starting frame?
-    if (!this.animations?.has(animationName)) {
+    const newAnimation = this.animations?.get(animationName);
+    if (!newAnimation) {
       throw new Error(`Unknown animation: ${animationName}`);
     }
-    this.currentAnimation = this.animations.get(animationName);
+    if (this.currentAnimation === newAnimation) return;
+    this.currentAnimation = newAnimation;
     this.animationStartTime = Date.now();
   }
 
@@ -242,7 +246,7 @@ export class ImageSprite extends Sprite {
     if (this.frames) {
       const [[x1, y1, x2, y2]] = this.frames.get(this.currentFrame)!;
       ctx.save();
-      ctx.scale((x2 - x1) / Math.abs(x2 - x1), (y2 - y1) / Math.abs(y2 - y1));
+      ctx.scale((x2 - x1) / Math.abs(x2 - x1) * (this.flip ? -1 : 1), (y2 - y1) / Math.abs(y2 - y1));
       translate(ctx, -this.width / 2, -this.height / 2);
       ctx.drawImage(
         this.image,
