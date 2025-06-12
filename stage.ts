@@ -1,10 +1,10 @@
-import {Sprite} from './sprite.js';
-import {Listener, convertKeyboardEvent, KeyEventData, FrameEventData} from './events.js';
+import { Sprite } from './sprite.js';
+import { Listener, convertKeyboardEvent, KeyEventData, FrameEventData } from './events.js';
 import { easeTo, getY } from './lib.js';
 import { translate } from './canvas_lib.js';
 import { insertSortedBy, removeFromSortedArray, sortByYZ } from './array_lib.js';
 
-type Edge = 'top'|'right'|'bottom'|'left';
+type Edge = 'top' | 'right' | 'bottom' | 'left';
 
 const VIEWPORT_EASING_STRENGTH = 0.25;
 const VIEWPORT_EASING_EPSILON = 0.1;
@@ -33,6 +33,8 @@ export class Stage {
   protected startTime = 0;
   protected lastFrameTime = 0;
 
+  protected readonly isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
   onPrepareFrame?: Listener<FrameEventData>;
   onBeforeRender?: Listener<FrameEventData>;
   adjustContextBeforeChrome?: (ctx: CanvasRenderingContext2D, event: FrameEventData) => void;
@@ -50,12 +52,14 @@ export class Stage {
   start() {
     // focus lock?
     document.body.addEventListener('keydown', this.onKeyDownPrivate);
+    document.body.addEventListener('touchstart', this.onTouchStart);
     this.startTime = this.lastFrameTime = Date.now();
     this.nextFrame();
   }
 
   stop() {
     document.body.removeEventListener('keydown', this.onKeyDownPrivate);
+    document.body.removeEventListener('touchstart', this.onTouchStart);
     cancelAnimationFrame(this.rafId);
     for (const id of this.timeouts) {
       window.clearTimeout(id);
@@ -76,7 +80,7 @@ export class Stage {
     const now = Date.now();
     const frameDelta = now - this.lastFrameTime;
     const timeSinceStart = now - this.startTime;
-    const frameEvent: FrameEventData = {frameDelta, timeSinceStart};
+    const frameEvent: FrameEventData = { frameDelta, timeSinceStart };
     this.onPrepareFrame?.(frameEvent);
     for (const sprite of this.sprites) {
       sprite.onBeforeRender?.(frameEvent);
@@ -97,18 +101,32 @@ export class Stage {
   }
 
   private readonly onKeyDownPrivate = (e: KeyboardEvent) => {
-    let preventDefault = false;
     const newEvent = convertKeyboardEvent(e);
+    this.executeKeyDownHandlers(newEvent, e);
+  }
+
+  private executeKeyDownHandlers(event: KeyEventData, originalEvent: Event) {
+    let preventDefault = false;
     for (const sprite of this.sprites) {
-      preventDefault = (sprite.onKeyDown(newEvent) === false) || preventDefault;
+      preventDefault = (sprite.onKeyDown(event) === false) || preventDefault;
     }
-    preventDefault = (this.onKeyDown?.(newEvent) === false) || preventDefault;
+    preventDefault = (this.onKeyDown?.(event) === false) || preventDefault;
     if (preventDefault) {
-      e.preventDefault();
+      originalEvent.preventDefault();
     }
   }
 
-  drawChrome(ctx: CanvasRenderingContext2D) {}
+  private readonly onTouchStart = (e: TouchEvent) => {
+    const touch = e.changedTouches.item(0);
+    if (!touch) return;
+    const x = touch.clientX;
+    const newEvent: KeyEventData = {
+      key: x < this.width / 2 ? 'ArrowLeft' : 'ArrowRight',
+    };
+    this.executeKeyDownHandlers(newEvent, e);
+  };
+
+  drawChrome(ctx: CanvasRenderingContext2D) { }
 
   setBackground(color: string) {
     this.background = color;
@@ -147,7 +165,7 @@ export class Stage {
   }
 
   protected getViewportEdge(edge: Edge): number {
-    const {viewportX: vx, viewportY: vy, width, height, zoom} = this;
+    const { viewportX: vx, viewportY: vy, width, height, zoom } = this;
     switch (edge) {
       case 'top': return vy - (height / zoom) / 2;
       case 'right': return vx + (width / zoom) / 2;

@@ -147,7 +147,7 @@ class SkiDear extends Stage {
                 this.chromeSprites.push(message);
             }
             {
-                const message = createBodyText('Press space to relive your wasted youth', { align: TextAlign.CENTER });
+                const message = createBodyText(`${this.isMobile ? 'Tap' : 'Press space'} to relive your wasted youth`, { align: TextAlign.CENTER });
                 message.setPos(x, y += 100);
                 this.chromeSprites.push(message);
             }
@@ -155,6 +155,9 @@ class SkiDear extends Stage {
             const { scores, yours } = getHighScoresWithPlaceholder(this.getScore());
             this.highScores = scores;
             this.scoreInput = yours;
+            if (yours && this.isMobile) {
+                yours.name = 'ME!';
+            }
             for (let i = 0; i < scores.length; ++i) {
                 const isYours = scores[i] === yours;
                 const color = isYours ? '#fb551c' : '#000';
@@ -174,10 +177,15 @@ class SkiDear extends Stage {
         const name = isYours && score.name.length < 3 ? score.name + '_' : score.name;
         return prefix + name.padEnd(4, ' ') + String(score.score).padStart(6, ' ') + suffix;
     }
-    onKeyDown = (event) => {
+    onKeyDown = ({ key }) => {
         if (this.scoreInput && this.highScores && this.scoreInputSprite) {
             const highScore = this.scoreInput;
-            switch (event.key) {
+            switch (key) {
+                case 'ArrowLeft':
+                case 'ArrowRight':
+                    if (!this.isMobile)
+                        break;
+                // convert left and right to enter for mobile users
                 case 'Enter':
                     // check it's 3 chars, etc
                     if (isValidHighScore(highScore)) {
@@ -186,11 +194,11 @@ class SkiDear extends Stage {
                     }
                     break;
                 default:
-                    applyUserInputTo(this.scoreInput, event.key);
+                    applyUserInputTo(this.scoreInput, key);
             }
             this.scoreInputSprite.setText(this.highScoreToText(highScore));
         }
-        else if (event.key === ' ' && (this.skiier.state === SkiierState.CRASHED
+        else if ((key === ' ' || (this.isMobile && (key === 'ArrowLeft' || key === 'ArrowRight'))) && (this.skiier.state === SkiierState.CRASHED
             || this.skiier.state === SkiierState.EATEN)) {
             this.onRestart();
         }

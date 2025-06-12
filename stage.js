@@ -24,6 +24,7 @@ export class Stage {
     rafId = 0;
     startTime = 0;
     lastFrameTime = 0;
+    isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     onPrepareFrame;
     onBeforeRender;
     adjustContextBeforeChrome;
@@ -39,11 +40,13 @@ export class Stage {
     start() {
         // focus lock?
         document.body.addEventListener('keydown', this.onKeyDownPrivate);
+        document.body.addEventListener('touchstart', this.onTouchStart);
         this.startTime = this.lastFrameTime = Date.now();
         this.nextFrame();
     }
     stop() {
         document.body.removeEventListener('keydown', this.onKeyDownPrivate);
+        document.body.removeEventListener('touchstart', this.onTouchStart);
         cancelAnimationFrame(this.rafId);
         for (const id of this.timeouts) {
             window.clearTimeout(id);
@@ -82,15 +85,28 @@ export class Stage {
         this.rafId = requestAnimationFrame(this.nextFrame);
     };
     onKeyDownPrivate = (e) => {
-        let preventDefault = false;
         const newEvent = convertKeyboardEvent(e);
+        this.executeKeyDownHandlers(newEvent, e);
+    };
+    executeKeyDownHandlers(event, originalEvent) {
+        let preventDefault = false;
         for (const sprite of this.sprites) {
-            preventDefault = (sprite.onKeyDown(newEvent) === false) || preventDefault;
+            preventDefault = (sprite.onKeyDown(event) === false) || preventDefault;
         }
-        preventDefault = (this.onKeyDown?.(newEvent) === false) || preventDefault;
+        preventDefault = (this.onKeyDown?.(event) === false) || preventDefault;
         if (preventDefault) {
-            e.preventDefault();
+            originalEvent.preventDefault();
         }
+    }
+    onTouchStart = (e) => {
+        const touch = e.changedTouches.item(0);
+        if (!touch)
+            return;
+        const x = touch.clientX;
+        const newEvent = {
+            key: x < this.width / 2 ? 'ArrowLeft' : 'ArrowRight',
+        };
+        this.executeKeyDownHandlers(newEvent, e);
     };
     drawChrome(ctx) { }
     setBackground(color) {
